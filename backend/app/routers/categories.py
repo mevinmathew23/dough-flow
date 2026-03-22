@@ -17,7 +17,7 @@ router = APIRouter(prefix="/api/categories", tags=["categories"])
 async def list_categories(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
-):
+) -> list[Category]:
     result = await db.execute(
         select(Category).where(
             or_(Category.user_id == user.id, Category.user_id.is_(None))
@@ -31,7 +31,7 @@ async def create_category(
     data: CategoryCreate,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
-):
+) -> Category:
     category = Category(**data.model_dump(), user_id=user.id, is_default=False)
     db.add(category)
     await db.commit()
@@ -44,7 +44,7 @@ async def delete_category(
     category_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
-):
+) -> None:
     result = await db.execute(select(Category).where(Category.id == category_id))
     category = result.scalar_one_or_none()
     if category is None:

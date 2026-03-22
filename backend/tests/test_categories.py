@@ -1,8 +1,6 @@
-import pytest
 from httpx import AsyncClient
 
 
-@pytest.mark.asyncio
 async def test_list_categories_includes_defaults(auth_client: AsyncClient):
     response = await auth_client.get("/api/categories")
     assert response.status_code == 200
@@ -12,7 +10,6 @@ async def test_list_categories_includes_defaults(auth_client: AsyncClient):
     assert "Salary" in names
 
 
-@pytest.mark.asyncio
 async def test_create_custom_category(auth_client: AsyncClient):
     response = await auth_client.post(
         "/api/categories",
@@ -24,7 +21,6 @@ async def test_create_custom_category(auth_client: AsyncClient):
     assert data["is_default"] is False
 
 
-@pytest.mark.asyncio
 async def test_delete_custom_category(auth_client: AsyncClient):
     create = await auth_client.post(
         "/api/categories",
@@ -35,7 +31,6 @@ async def test_delete_custom_category(auth_client: AsyncClient):
     assert response.status_code == 204
 
 
-@pytest.mark.asyncio
 async def test_cannot_delete_default_category(auth_client: AsyncClient):
     response = await auth_client.get("/api/categories")
     default_cat = next(c for c in response.json() if c["is_default"])

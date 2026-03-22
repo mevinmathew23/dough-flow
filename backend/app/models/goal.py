@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import uuid
 from datetime import date
 
@@ -18,4 +20,4 @@ class Goal(Base):
     target_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     icon: Mapped[str] = mapped_column(String(50), default="")
 
-    user = relationship("User", back_populates="goals")
+    user: Mapped[User] = relationship(back_populates="goals")

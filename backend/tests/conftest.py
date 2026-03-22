@@ -1,4 +1,3 @@
-import asyncio
 from collections.abc import AsyncGenerator
 
 import pytest
@@ -15,15 +14,8 @@ engine = create_async_engine(TEST_DATABASE_URL, echo=False)
 TestingSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
-
-
 @pytest.fixture(autouse=True)
-async def setup_db():
+async def setup_db() -> AsyncGenerator[None, None]:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     async with TestingSessionLocal() as session:

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import enum
 import uuid
 
@@ -22,6 +24,6 @@ class Category(Base):
     icon: Mapped[str] = mapped_column(String(50), default="")
     is_default: Mapped[bool] = mapped_column(Boolean, default=False)
 
-    user = relationship("User", back_populates="categories")
-    transactions = relationship("Transaction", back_populates="category")
-    budgets = relationship("Budget", back_populates="category")
+    user: Mapped[User | None] = relationship(back_populates="categories")
+    transactions: Mapped[list[Transaction]] = relationship(back_populates="category")
+    budgets: Mapped[list[Budget]] = relationship(back_populates="category")

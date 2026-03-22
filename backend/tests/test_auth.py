@@ -1,8 +1,6 @@
-import pytest
 from httpx import AsyncClient
 
 
-@pytest.mark.asyncio
 async def test_register_user(client: AsyncClient):
     response = await client.post(
         "/api/auth/register",
@@ -16,7 +14,6 @@ async def test_register_user(client: AsyncClient):
     assert "password_hash" not in data
 
 
-@pytest.mark.asyncio
 async def test_register_duplicate_email(client: AsyncClient):
     await client.post(
         "/api/auth/register",
@@ -29,7 +26,6 @@ async def test_register_duplicate_email(client: AsyncClient):
     assert response.status_code == 400
 
 
-@pytest.mark.asyncio
 async def test_login_success(client: AsyncClient):
     await client.post(
         "/api/auth/register",
@@ -45,7 +41,6 @@ async def test_login_success(client: AsyncClient):
     assert data["token_type"] == "bearer"
 
 
-@pytest.mark.asyncio
 async def test_login_wrong_password(client: AsyncClient):
     await client.post(
         "/api/auth/register",
@@ -58,7 +53,6 @@ async def test_login_wrong_password(client: AsyncClient):
     assert response.status_code == 401
 
 
-@pytest.mark.asyncio
 async def test_get_me(auth_client: AsyncClient):
     response = await auth_client.get("/api/auth/me")
     assert response.status_code == 200

@@ -2,10 +2,15 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 from app.database import async_session
 from app.routers import auth, accounts, categories
 from app.seed import seed_default_categories
+
+
+class HealthResponse(BaseModel):
+    status: str
 
 
 @asynccontextmanager
@@ -30,6 +35,6 @@ app.include_router(accounts.router)
 app.include_router(categories.router)
 
 
-@app.get("/api/health")
-async def health_check():
-    return {"status": "ok"}
+@app.get("/api/health", response_model=HealthResponse)
+async def health_check() -> HealthResponse:
+    return HealthResponse(status="ok")
