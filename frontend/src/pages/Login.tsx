@@ -23,8 +23,9 @@ export default function Login() {
       const res = await api.post('/auth/login', params)
       localStorage.setItem('token', res.data.access_token)
       navigate('/')
-    } catch {
-      setError(isRegister ? 'Registration failed' : 'Invalid credentials')
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      setError(detail || (isRegister ? 'Registration failed' : 'Invalid credentials'))
     }
   }
 

@@ -16,7 +16,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255))
     name: Mapped[str] = mapped_column(String(255))
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     accounts: Mapped[list[Account]] = relationship(back_populates="user", cascade="all, delete-orphan")
     transactions: Mapped[list[Transaction]] = relationship(back_populates="user", cascade="all, delete-orphan")
