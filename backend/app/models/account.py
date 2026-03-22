@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import enum
 import uuid
 from datetime import datetime, timezone
@@ -29,6 +31,6 @@ class Account(Base):
     external_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
-    user = relationship("User", back_populates="accounts")
-    transactions = relationship("Transaction", back_populates="account", cascade="all, delete-orphan")
-    debts = relationship("Debt", back_populates="account", cascade="all, delete-orphan")
+    user: Mapped[User] = relationship(back_populates="accounts")
+    transactions: Mapped[list[Transaction]] = relationship(back_populates="account", cascade="all, delete-orphan")
+    debts: Mapped[list[Debt]] = relationship(back_populates="account", cascade="all, delete-orphan")

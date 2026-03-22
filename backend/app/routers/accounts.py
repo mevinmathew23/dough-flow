@@ -18,7 +18,7 @@ async def create_account(
     data: AccountCreate,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
-):
+) -> Account:
     account = Account(**data.model_dump(), user_id=user.id)
     db.add(account)
     await db.commit()
@@ -30,7 +30,7 @@ async def create_account(
 async def list_accounts(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
-):
+) -> list[Account]:
     result = await db.execute(select(Account).where(Account.user_id == user.id))
     return result.scalars().all()
 
@@ -40,7 +40,7 @@ async def get_account(
     account_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
-):
+) -> Account:
     result = await db.execute(
         select(Account).where(Account.id == account_id, Account.user_id == user.id)
     )
@@ -56,7 +56,7 @@ async def update_account(
     data: AccountUpdate,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
-):
+) -> Account:
     result = await db.execute(
         select(Account).where(Account.id == account_id, Account.user_id == user.id)
     )
@@ -75,7 +75,7 @@ async def delete_account(
     account_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
-):
+) -> None:
     result = await db.execute(
         select(Account).where(Account.id == account_id, Account.user_id == user.id)
     )

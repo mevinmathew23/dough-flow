@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import uuid
 from datetime import datetime, timezone
 
@@ -17,4 +19,4 @@ class CSVMapping(Base):
     date_format: Mapped[str] = mapped_column(String(50), default="%m/%d/%Y")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
-    user = relationship("User", back_populates="csv_mappings")
+    user: Mapped[User] = relationship(back_populates="csv_mappings")

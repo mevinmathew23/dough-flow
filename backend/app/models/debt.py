@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import uuid
 from datetime import date
 
@@ -20,5 +22,5 @@ class Debt(Base):
     priority_order: Mapped[int] = mapped_column(Integer, default=0)
     target_payoff_date: Mapped[date | None] = mapped_column(Date, nullable=True)
 
-    account = relationship("Account", back_populates="debts")
-    user = relationship("User", back_populates="debts")
+    account: Mapped[Account] = relationship(back_populates="debts")
+    user: Mapped[User] = relationship(back_populates="debts")

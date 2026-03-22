@@ -13,7 +13,7 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
+async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)) -> User:
     existing = await get_user_by_email(db, user_data.email)
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -22,7 +22,7 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/login", response_model=Token)
-async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
+async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)) -> Token:
     user = await authenticate_user(db, form_data.username, form_data.password)
     if user is None:
         raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -31,5 +31,5 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSessi
 
 
 @router.get("/me", response_model=UserResponse)
-async def get_me(current_user: User = Depends(get_current_user)):
+async def get_me(current_user: User = Depends(get_current_user)) -> User:
     return current_user

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import enum
 import uuid
 from datetime import date, datetime, timezone
@@ -35,6 +37,6 @@ class Transaction(Base):
     transfer_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
-    account = relationship("Account", back_populates="transactions")
-    user = relationship("User", back_populates="transactions")
-    category = relationship("Category", back_populates="transactions")
+    account: Mapped[Account] = relationship(back_populates="transactions")
+    user: Mapped[User] = relationship(back_populates="transactions")
+    category: Mapped[Category | None] = relationship(back_populates="transactions")

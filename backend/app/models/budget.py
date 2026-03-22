@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import uuid
 from datetime import date
 
@@ -16,5 +18,5 @@ class Budget(Base):
     amount: Mapped[float] = mapped_column(Numeric(12, 2))
     month: Mapped[date] = mapped_column(Date)
 
-    user = relationship("User", back_populates="budgets")
-    category = relationship("Category", back_populates="budgets")
+    user: Mapped[User] = relationship(back_populates="budgets")
+    category: Mapped[Category] = relationship(back_populates="budgets")
