@@ -1,0 +1,35 @@
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.database import async_session
+from app.routers import auth, accounts, categories
+from app.seed import seed_default_categories
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    async with async_session() as db:
+        await seed_default_categories(db)
+    yield
+
+
+app = FastAPI(title="Dough Flow API", version="0.1.0", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(auth.router)
+app.include_router(accounts.router)
+app.include_router(categories.router)
+
+
+@app.get("/api/health")
+async def health_check():
+    return {"status": "ok"}
