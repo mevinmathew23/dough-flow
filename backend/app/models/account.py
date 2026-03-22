@@ -29,7 +29,7 @@ class Account(Base):
     balance: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
     interest_rate: Mapped[float | None] = mapped_column(Numeric(5, 4), nullable=True)
     external_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     user: Mapped[User] = relationship(back_populates="accounts")
     transactions: Mapped[list[Transaction]] = relationship(back_populates="account", cascade="all, delete-orphan")

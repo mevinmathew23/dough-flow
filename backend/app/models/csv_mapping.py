@@ -17,6 +17,6 @@ class CSVMapping(Base):
     institution_name: Mapped[str] = mapped_column(String(255))
     column_mapping: Mapped[dict] = mapped_column(JSON)
     date_format: Mapped[str] = mapped_column(String(50), default="%m/%d/%Y")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     user: Mapped[User] = relationship(back_populates="csv_mappings")

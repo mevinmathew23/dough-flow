@@ -35,7 +35,7 @@ class Transaction(Base):
     type: Mapped[TransactionType] = mapped_column(Enum(TransactionType))
     source: Mapped[TransactionSource] = mapped_column(Enum(TransactionSource), default=TransactionSource.MANUAL)
     transfer_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     account: Mapped[Account] = relationship(back_populates="transactions")
     user: Mapped[User] = relationship(back_populates="transactions")
