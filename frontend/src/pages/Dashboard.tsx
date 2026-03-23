@@ -47,36 +47,34 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchDashboard = async () => {
       const month = format(startOfMonth(new Date()), 'yyyy-MM-dd')
-      try {
-        const [summaryRes, netWorthRes, trendRes, categoryRes, accountsRes, debtsRes] = await Promise.all([
-          api.get(`/reports/monthly?month=${month}`),
-          api.get('/reports/net-worth'),
-          api.get('/reports/trend?months=6'),
-          api.get(`/reports/categories?month=${month}`),
-          api.get('/accounts'),
-          api.get('/debts'),
-        ])
-        setSummary(summaryRes.data)
-        setNetWorth(netWorthRes.data)
-        setTrend(trendRes.data)
-        setCategorySpending(categoryRes.data)
-        setAccounts(accountsRes.data)
-        setDebts(debtsRes.data)
-      } catch {
+      const results = await Promise.allSettled([
+        api.get(`/reports/monthly?month=${month}`),
+        api.get('/reports/net-worth'),
+        api.get('/reports/trend?months=6'),
+        api.get(`/reports/categories?month=${month}`),
+        api.get('/accounts'),
+        api.get('/debts'),
+      ])
+      const [summaryRes, netWorthRes, trendRes, categoryRes, accountsRes, debtsRes] = results
+      if (summaryRes.status === 'fulfilled') setSummary(summaryRes.value.data)
+      if (netWorthRes.status === 'fulfilled') setNetWorth(netWorthRes.value.data)
+      if (trendRes.status === 'fulfilled') setTrend(trendRes.value.data)
+      if (categoryRes.status === 'fulfilled') setCategorySpending(categoryRes.value.data)
+      if (accountsRes.status === 'fulfilled') setAccounts(accountsRes.value.data)
+      if (debtsRes.status === 'fulfilled') setDebts(debtsRes.value.data)
+      const failures = results.filter((r) => r.status === 'rejected')
+      if (failures.length === results.length) {
         setError('Failed to load dashboard data')
-      } finally {
-        setLoading(false)
+      } else if (failures.length > 0) {
+        setError('Some dashboard data could not be loaded')
       }
+      setLoading(false)
     }
     fetchDashboard()
   }, [])
 
   if (loading) {
     return <div className="text-slate-400">Loading dashboard...</div>
-  }
-
-  if (error) {
-    return <div className="text-red-400">{error}</div>
   }
 
   const trendData = trend.map((m) => ({
@@ -97,6 +95,8 @@ export default function Dashboard() {
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
+
+      {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-4 gap-4 mb-8">
