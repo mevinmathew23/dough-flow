@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { format } from 'date-fns'
 import api from '../api/client'
 import Modal from '../components/Modal'
+import { useCurrency } from '../contexts/CurrencyContext'
 import { Account, Category, Transaction, TransactionType } from '../types'
 
 const TYPE_LABELS: Record<TransactionType, string> = {
@@ -16,13 +17,9 @@ const TYPE_COLORS: Record<TransactionType, string> = {
   transfer: 'bg-blue-500/10 text-blue-400',
 }
 
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(
-    Math.abs(amount),
-  )
-}
-
 export default function Transactions() {
+  const { formatCurrency: baseFmtCurrency } = useCurrency()
+  const formatCurrency = (amount: number) => baseFmtCurrency(Math.abs(amount))
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [accounts, setAccounts] = useState<Account[]>([])
   const [categories, setCategories] = useState<Category[]>([])

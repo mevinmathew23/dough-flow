@@ -72,6 +72,15 @@ export default function Settings() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [selectedCurrency, setSelectedCurrency] = useState(currency)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  const hasChanges = selectedCurrency !== currency
+
+  useEffect(() => {
+    setSelectedCurrency(currency)
+  }, [currency])
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -89,6 +98,20 @@ export default function Settings() {
 
     fetchProfile()
   }, [])
+
+  const handleSave = async () => {
+    setSaving(true)
+    setSaved(false)
+    try {
+      await setCurrency(selectedCurrency)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch {
+      setError('Failed to save preferences.')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const handleLogout = () => {
     localStorage.removeItem('token')
@@ -132,18 +155,34 @@ export default function Settings() {
         </div>
       )}
 
-      <div className="bg-navy-900 border border-navy-800 rounded-xl p-6 mb-6">
-        <h2 className="text-sm font-medium text-slate-400 uppercase tracking-wider font-display mb-4">
+      <div className="bg-navy-900 border border-navy-800 rounded-xl p-6 mb-6 space-y-4">
+        <h2 className="text-sm font-medium text-slate-400 uppercase tracking-wider font-display">
           Preferences
         </h2>
         <div className="flex items-center justify-between py-2">
           <span className="text-sm text-slate-400">Base Currency</span>
           <SearchableSelect
             options={CURRENCY_OPTIONS}
-            value={currency}
-            onChange={setCurrency}
+            value={selectedCurrency}
+            onChange={setSelectedCurrency}
             placeholder="Search currencies..."
           />
+        </div>
+        <div className="flex items-center gap-3 pt-2 border-t border-navy-800">
+          <button
+            onClick={handleSave}
+            disabled={!hasChanges || saving}
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer ${
+              hasChanges && !saving
+                ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                : 'bg-navy-800 text-slate-500 cursor-not-allowed'
+            }`}
+          >
+            {saving ? 'Saving...' : 'Save preferences'}
+          </button>
+          {saved && (
+            <span className="text-sm text-emerald-400">Saved successfully</span>
+          )}
         </div>
       </div>
 

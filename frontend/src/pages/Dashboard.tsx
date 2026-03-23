@@ -14,27 +14,13 @@ import {
   Cell,
 } from 'recharts'
 import api from '../api/client'
+import { useCurrency } from '../contexts/CurrencyContext'
 import { Account, CategorySpending, Debt, MonthlySummary, NetWorth } from '../types'
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)
-}
-
-function formatCompact(amount: number): string {
-  if (Math.abs(amount) >= 1000) {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      notation: 'compact',
-      maximumFractionDigits: 1,
-    }).format(amount)
-  }
-  return formatCurrency(amount)
-}
 
 const CHART_COLORS = ['#10b981', '#22c55e', '#a855f7', '#f59e0b', '#ef4444', '#06b6d4', '#ec4899', '#84cc16']
 
 export default function Dashboard() {
+  const { formatCurrency, formatCompact } = useCurrency()
   const [summary, setSummary] = useState<MonthlySummary | null>(null)
   const [netWorth, setNetWorth] = useState<NetWorth | null>(null)
   const [trend, setTrend] = useState<MonthlySummary[]>([])
