@@ -7,7 +7,7 @@ from app.dependencies import get_current_user
 from app.models.user import User
 from app.schemas.auth import Token
 from app.schemas.user import UserCreate, UserResponse, UserUpdate
-from app.services.auth import authenticate_user, create_user, get_user_by_email, create_access_token
+from app.services.auth import authenticate_user, create_access_token, create_user, get_user_by_email
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 

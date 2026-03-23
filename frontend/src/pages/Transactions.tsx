@@ -301,7 +301,10 @@ export default function Transactions() {
           placeholder="To"
         />
         {hasActiveFilters && (
-          <button onClick={clearFilters} className="text-slate-400 hover:text-white text-sm cursor-pointer">
+          <button
+            onClick={clearFilters}
+            className="text-slate-400 hover:text-white text-sm cursor-pointer"
+          >
             Clear filters
           </button>
         )}
@@ -471,7 +474,9 @@ export default function Transactions() {
           />
           <select
             value={form.type}
-            onChange={(e) => setForm({ ...form, type: e.target.value as TransactionType, category_id: '' })}
+            onChange={(e) =>
+              setForm({ ...form, type: e.target.value as TransactionType, category_id: '' })
+            }
             className={inputClass}
           >
             <option value="expense">Expense</option>

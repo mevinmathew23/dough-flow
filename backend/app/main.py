@@ -1,3 +1,4 @@
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -5,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from app.database import async_session
-from app.routers import auth, accounts, budgets, categories, csv_import, debts, goals, transactions, reports
+from app.routers import accounts, auth, budgets, categories, csv_import, debts, goals, reports, transactions
 from app.seed import seed_default_categories
 
 
@@ -14,7 +15,7 @@ class HealthResponse(BaseModel):
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     async with async_session() as db:
         await seed_default_categories(db)
     yield

@@ -3,11 +3,17 @@ from __future__ import annotations
 import enum
 import uuid
 from datetime import date, datetime, timezone
+from typing import TYPE_CHECKING
 
-from sqlalchemy import String, Date, DateTime, Numeric, ForeignKey, Enum
+from sqlalchemy import Date, DateTime, Enum, ForeignKey, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+
+if TYPE_CHECKING:
+    from app.models.account import Account
+    from app.models.category import Category
+    from app.models.user import User
 
 
 class TransactionType(str, enum.Enum):

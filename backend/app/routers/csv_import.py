@@ -34,7 +34,7 @@ async def detect_csv_columns(
     try:
         columns = detect_columns(content)
     except CSVParseError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     return CSVColumnDetectionResponse(columns=columns)
 
 
@@ -53,7 +53,7 @@ async def preview_csv(
     try:
         parsed = parse_csv(content, mapping, date_format)
     except CSVParseError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     # Check for duplicates against existing transactions
     duplicate_indices: list[int] = []
@@ -136,9 +136,7 @@ async def list_mappings(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[CSVMapping]:
-    result = await db.execute(
-        select(CSVMapping).where(CSVMapping.user_id == current_user.id)
-    )
+    result = await db.execute(select(CSVMapping).where(CSVMapping.user_id == current_user.id))
     return list(result.scalars().all())
 
 

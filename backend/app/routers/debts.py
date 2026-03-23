@@ -44,9 +44,7 @@ async def list_debts(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[Debt]:
-    result = await db.execute(
-        select(Debt).where(Debt.user_id == current_user.id).order_by(Debt.priority_order)
-    )
+    result = await db.execute(select(Debt).where(Debt.user_id == current_user.id).order_by(Debt.priority_order))
     return list(result.scalars().all())
 
 
@@ -56,9 +54,7 @@ async def get_payoff_projection(
     current_user: User = Depends(get_current_user),
     extra_monthly: float = Query(0),
 ) -> PayoffSummary:
-    result = await db.execute(
-        select(Debt).where(Debt.user_id == current_user.id).order_by(Debt.priority_order)
-    )
+    result = await db.execute(select(Debt).where(Debt.user_id == current_user.id).order_by(Debt.priority_order))
     debts = list(result.scalars().all())
     if not debts:
         return PayoffSummary(
@@ -78,9 +74,7 @@ async def get_growth_projections(
     months: int = Query(12, ge=1, le=120),
 ) -> list[GrowthProjection]:
     """Project how each debt grows over time from interest alone (no payments)."""
-    result = await db.execute(
-        select(Debt).where(Debt.user_id == current_user.id).order_by(Debt.priority_order)
-    )
+    result = await db.execute(select(Debt).where(Debt.user_id == current_user.id).order_by(Debt.priority_order))
     debts = list(result.scalars().all())
     return [project_growth(d, months) for d in debts]
 
@@ -91,9 +85,7 @@ async def get_grouped_summary(
     current_user: User = Depends(get_current_user),
 ) -> DebtGroupSummary:
     """Get all debts aggregated: total principal, total balance, weighted interest rate."""
-    result = await db.execute(
-        select(Debt).where(Debt.user_id == current_user.id).order_by(Debt.priority_order)
-    )
+    result = await db.execute(select(Debt).where(Debt.user_id == current_user.id).order_by(Debt.priority_order))
     debts = list(result.scalars().all())
     if not debts:
         return DebtGroupSummary(
@@ -113,9 +105,7 @@ async def get_debt(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Debt:
-    result = await db.execute(
-        select(Debt).where(Debt.id == debt_id, Debt.user_id == current_user.id)
-    )
+    result = await db.execute(select(Debt).where(Debt.id == debt_id, Debt.user_id == current_user.id))
     debt = result.scalar_one_or_none()
     if debt is None:
         raise HTTPException(status_code=404, detail="Debt not found")
@@ -129,9 +119,7 @@ async def update_debt(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Debt:
-    result = await db.execute(
-        select(Debt).where(Debt.id == debt_id, Debt.user_id == current_user.id)
-    )
+    result = await db.execute(select(Debt).where(Debt.id == debt_id, Debt.user_id == current_user.id))
     debt = result.scalar_one_or_none()
     if debt is None:
         raise HTTPException(status_code=404, detail="Debt not found")
@@ -148,9 +136,7 @@ async def delete_debt(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> None:
-    result = await db.execute(
-        select(Debt).where(Debt.id == debt_id, Debt.user_id == current_user.id)
-    )
+    result = await db.execute(select(Debt).where(Debt.id == debt_id, Debt.user_id == current_user.id))
     debt = result.scalar_one_or_none()
     if debt is None:
         raise HTTPException(status_code=404, detail="Debt not found")

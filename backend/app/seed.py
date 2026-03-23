@@ -25,9 +25,7 @@ DEFAULT_CATEGORIES = [
 
 
 async def seed_default_categories(db: AsyncSession) -> None:
-    result = await db.execute(
-        select(Category).where(Category.is_default == True).limit(1)  # noqa: E712
-    )
+    result = await db.execute(select(Category).where(Category.is_default.is_(True)).limit(1))
     if result.scalar_one_or_none() is not None:
         return
 

@@ -2,11 +2,16 @@ from __future__ import annotations
 
 import uuid
 from datetime import date
+from typing import TYPE_CHECKING
 
-from sqlalchemy import Date, Numeric, ForeignKey
+from sqlalchemy import Date, ForeignKey, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+
+if TYPE_CHECKING:
+    from app.models.category import Category
+    from app.models.user import User
 
 
 class Budget(Base):

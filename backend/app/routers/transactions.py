@@ -114,7 +114,5 @@ async def bulk_categorize(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict[str, int]:
-    updated_count = await bulk_categorize_transactions(
-        db, current_user.id, data.transaction_ids, data.category_id
-    )
+    updated_count = await bulk_categorize_transactions(db, current_user.id, data.transaction_ids, data.category_id)
     return {"updated_count": updated_count}

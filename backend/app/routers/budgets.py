@@ -47,9 +47,7 @@ async def list_budgets(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[Budget]:
-    result = await db.execute(
-        select(Budget).where(Budget.user_id == current_user.id, Budget.month == month)
-    )
+    result = await db.execute(select(Budget).where(Budget.user_id == current_user.id, Budget.month == month))
     return list(result.scalars().all())
 
 
@@ -69,9 +67,7 @@ async def update_budget(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Budget:
-    result = await db.execute(
-        select(Budget).where(Budget.id == budget_id, Budget.user_id == current_user.id)
-    )
+    result = await db.execute(select(Budget).where(Budget.id == budget_id, Budget.user_id == current_user.id))
     budget = result.scalar_one_or_none()
     if budget is None:
         raise HTTPException(status_code=404, detail="Budget not found")
@@ -88,9 +84,7 @@ async def delete_budget(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> None:
-    result = await db.execute(
-        select(Budget).where(Budget.id == budget_id, Budget.user_id == current_user.id)
-    )
+    result = await db.execute(select(Budget).where(Budget.id == budget_id, Budget.user_id == current_user.id))
     budget = result.scalar_one_or_none()
     if budget is None:
         raise HTTPException(status_code=404, detail="Budget not found")

@@ -258,8 +258,12 @@ export default function DebtPayoff() {
             </p>
           </div>
           <div className="bg-navy-900 border border-navy-800 rounded-xl p-4">
-            <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">Original Principal</p>
-            <p className="text-xl font-bold font-mono">{formatCurrency(groupSummary.total_principal)}</p>
+            <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">
+              Original Principal
+            </p>
+            <p className="text-xl font-bold font-mono">
+              {formatCurrency(groupSummary.total_principal)}
+            </p>
           </div>
           <div className="bg-navy-900 border border-navy-800 rounded-xl p-4">
             <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">Weighted Rate</p>
@@ -269,7 +273,9 @@ export default function DebtPayoff() {
           </div>
           <div className="bg-navy-900 border border-navy-800 rounded-xl p-4">
             <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">Monthly Minimum</p>
-            <p className="text-xl font-bold font-mono">{formatCurrency(groupSummary.total_minimum_payment)}</p>
+            <p className="text-xl font-bold font-mono">
+              {formatCurrency(groupSummary.total_minimum_payment)}
+            </p>
           </div>
         </div>
       )}
@@ -279,7 +285,10 @@ export default function DebtPayoff() {
           <h2 className="text-base font-semibold font-display mb-4">Payoff Simulator</h2>
           <div className="mb-4">
             <label className="text-sm text-slate-300 block mb-3">
-              Extra Monthly Payment: <span className="font-semibold text-white font-mono">{formatCurrency(extraMonthly)}</span>
+              Extra Monthly Payment:{' '}
+              <span className="font-semibold text-white font-mono">
+                {formatCurrency(extraMonthly)}
+              </span>
             </label>
             <input
               type="range"
@@ -302,19 +311,25 @@ export default function DebtPayoff() {
           ) : payoffSummary ? (
             <div className="grid grid-cols-3 gap-4">
               <div className="bg-navy-850 rounded-lg p-3">
-                <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">Debt-Free Date</p>
+                <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">
+                  Debt-Free Date
+                </p>
                 <p className="text-sm font-semibold font-mono">
                   {format(new Date(payoffSummary.debt_free_date), 'MMM yyyy')}
                 </p>
               </div>
               <div className="bg-navy-850 rounded-lg p-3">
-                <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">Total Interest</p>
+                <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">
+                  Total Interest
+                </p>
                 <p className="text-sm font-semibold text-red-400 font-mono">
                   {formatCurrency(payoffSummary.total_interest)}
                 </p>
               </div>
               <div className="bg-navy-850 rounded-lg p-3">
-                <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">Interest Saved</p>
+                <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">
+                  Interest Saved
+                </p>
                 <p className="text-sm font-semibold text-green-400 font-mono">
                   {formatCurrency(payoffSummary.interest_saved_vs_minimum)}
                 </p>
@@ -332,25 +347,28 @@ export default function DebtPayoff() {
       ) : (
         <div className="space-y-3">
           {sortedDebts.map((debt) => {
-            const paidOff = debt.principal_amount > 0
-              ? Math.max(0, ((debt.principal_amount - debt.current_balance) / debt.principal_amount) * 100)
-              : 0
+            const paidOff =
+              debt.principal_amount > 0
+                ? Math.max(
+                    0,
+                    ((debt.principal_amount - debt.current_balance) / debt.principal_amount) * 100,
+                  )
+                : 0
             const progressCapped = Math.min(100, paidOff)
             const projection = getProjection(debt.id)
             const isExpanded = expandedDebtId === debt.id
 
             return (
-              <div
-                key={debt.id}
-                className="bg-navy-900 border border-navy-800 rounded-xl p-4"
-              >
+              <div key={debt.id} className="bg-navy-900 border border-navy-800 rounded-xl p-4">
                 <div className="flex items-start justify-between mb-3">
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-slate-500 font-medium">
                         #{debt.priority_order}
                       </span>
-                      <span className="text-sm font-semibold">{getAccountName(debt.account_id)}</span>
+                      <span className="text-sm font-semibold">
+                        {getAccountName(debt.account_id)}
+                      </span>
                       <span className="bg-orange-500/10 text-orange-400 px-2 py-0.5 rounded-full text-xs font-mono">
                         {formatPercent(debt.interest_rate)} APR
                       </span>
@@ -358,7 +376,10 @@ export default function DebtPayoff() {
                     <div className="text-xs text-slate-400 mt-0.5">
                       {FREQUENCY_LABELS[debt.compounding_frequency]} compounding
                       {debt.target_payoff_date && (
-                        <span className="ml-2">· Target: {format(new Date(debt.target_payoff_date + 'T00:00:00'), 'MMM d, yyyy')}</span>
+                        <span className="ml-2">
+                          · Target:{' '}
+                          {format(new Date(debt.target_payoff_date + 'T00:00:00'), 'MMM d, yyyy')}
+                        </span>
                       )}
                     </div>
                   </div>
@@ -380,13 +401,22 @@ export default function DebtPayoff() {
 
                 <div className="flex items-center justify-between text-sm mb-2">
                   <span className="text-slate-400">
-                    Balance: <span className="text-white font-medium font-mono">{formatCurrency(debt.current_balance)}</span>
+                    Balance:{' '}
+                    <span className="text-white font-medium font-mono">
+                      {formatCurrency(debt.current_balance)}
+                    </span>
                   </span>
                   <span className="text-slate-400">
-                    Principal: <span className="text-slate-300 font-mono">{formatCurrency(debt.principal_amount)}</span>
+                    Principal:{' '}
+                    <span className="text-slate-300 font-mono">
+                      {formatCurrency(debt.principal_amount)}
+                    </span>
                   </span>
                   <span className="text-slate-400">
-                    Min payment: <span className="text-slate-300 font-mono">{formatCurrency(debt.minimum_payment)}</span>
+                    Min payment:{' '}
+                    <span className="text-slate-300 font-mono">
+                      {formatCurrency(debt.minimum_payment)}
+                    </span>
                   </span>
                 </div>
 
@@ -417,21 +447,44 @@ export default function DebtPayoff() {
                         <table className="w-full text-xs">
                           <thead className="bg-navy-850 sticky top-0">
                             <tr>
-                              <th className="text-left px-3 py-2 text-slate-400 font-medium">Month</th>
-                              <th className="text-right px-3 py-2 text-slate-400 font-medium">Payment</th>
-                              <th className="text-right px-3 py-2 text-slate-400 font-medium">Principal</th>
-                              <th className="text-right px-3 py-2 text-slate-400 font-medium">Interest</th>
-                              <th className="text-right px-3 py-2 text-slate-400 font-medium">Balance</th>
+                              <th className="text-left px-3 py-2 text-slate-400 font-medium">
+                                Month
+                              </th>
+                              <th className="text-right px-3 py-2 text-slate-400 font-medium">
+                                Payment
+                              </th>
+                              <th className="text-right px-3 py-2 text-slate-400 font-medium">
+                                Principal
+                              </th>
+                              <th className="text-right px-3 py-2 text-slate-400 font-medium">
+                                Interest
+                              </th>
+                              <th className="text-right px-3 py-2 text-slate-400 font-medium">
+                                Balance
+                              </th>
                             </tr>
                           </thead>
                           <tbody>
                             {projection.schedule.map((row) => (
-                              <tr key={row.month} className="border-t border-navy-800 hover:bg-navy-850/50">
-                                <td className="px-3 py-1.5 text-slate-300 font-mono">{row.month}</td>
-                                <td className="px-3 py-1.5 text-right text-slate-300 font-mono">{formatCurrency(row.payment)}</td>
-                                <td className="px-3 py-1.5 text-right text-green-400 font-mono">{formatCurrency(row.principal)}</td>
-                                <td className="px-3 py-1.5 text-right text-red-400 font-mono">{formatCurrency(row.interest)}</td>
-                                <td className="px-3 py-1.5 text-right text-slate-300 font-mono">{formatCurrency(row.balance)}</td>
+                              <tr
+                                key={row.month}
+                                className="border-t border-navy-800 hover:bg-navy-850/50"
+                              >
+                                <td className="px-3 py-1.5 text-slate-300 font-mono">
+                                  {row.month}
+                                </td>
+                                <td className="px-3 py-1.5 text-right text-slate-300 font-mono">
+                                  {formatCurrency(row.payment)}
+                                </td>
+                                <td className="px-3 py-1.5 text-right text-green-400 font-mono">
+                                  {formatCurrency(row.principal)}
+                                </td>
+                                <td className="px-3 py-1.5 text-right text-red-400 font-mono">
+                                  {formatCurrency(row.interest)}
+                                </td>
+                                <td className="px-3 py-1.5 text-right text-slate-300 font-mono">
+                                  {formatCurrency(row.balance)}
+                                </td>
                               </tr>
                             ))}
                           </tbody>

@@ -122,9 +122,7 @@ export default function Settings() {
     <div className="max-w-2xl mx-auto space-y-6">
       <h1 className="text-2xl font-bold font-display text-white">Settings</h1>
 
-      {loading && (
-        <div className="text-slate-400 text-sm">Loading profile...</div>
-      )}
+      {loading && <div className="text-slate-400 text-sm">Loading profile...</div>}
 
       {error && (
         <div className="bg-red-900/30 border border-red-700 text-red-400 rounded-xl px-4 py-3 text-sm">
@@ -180,9 +178,7 @@ export default function Settings() {
           >
             {saving ? 'Saving...' : 'Save preferences'}
           </button>
-          {saved && (
-            <span className="text-sm text-emerald-400">Saved successfully</span>
-          )}
+          {saved && <span className="text-sm text-emerald-400">Saved successfully</span>}
         </div>
       </div>
 

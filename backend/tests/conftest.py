@@ -1,6 +1,6 @@
-from collections.abc import AsyncGenerator
 import os
 import secrets
+from collections.abc import AsyncGenerator
 
 os.environ.setdefault("SECRET_KEY", secrets.token_urlsafe(32))
 

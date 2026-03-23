@@ -3,11 +3,16 @@ from __future__ import annotations
 import enum
 import uuid
 from datetime import date
+from typing import TYPE_CHECKING
 
-from sqlalchemy import Integer, Date, Numeric, ForeignKey, Enum, String
+from sqlalchemy import Date, Enum, ForeignKey, Integer, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+
+if TYPE_CHECKING:
+    from app.models.account import Account
+    from app.models.user import User
 
 
 class CompoundingFrequency(str, enum.Enum):

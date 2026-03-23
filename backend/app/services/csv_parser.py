@@ -41,8 +41,8 @@ def parse_csv(
         try:
             raw_date = str(row[column_mapping["date"]]).strip()
             parsed_date = datetime.strptime(raw_date, date_format).date()
-        except ValueError:
-            raise CSVParseError(f"Invalid date '{raw_date}' for format '{date_format}'")
+        except ValueError as exc:
+            raise CSVParseError(f"Invalid date '{raw_date}' for format '{date_format}'") from exc
 
         try:
             raw_amount = str(row[column_mapping["amount"]]).strip()
@@ -51,8 +51,8 @@ def parse_csv(
             if cleaned.startswith("(") and cleaned.endswith(")"):
                 cleaned = "-" + cleaned[1:-1]
             amount = float(cleaned)
-        except ValueError:
-            raise CSVParseError(f"Invalid amount '{raw_amount}'")
+        except ValueError as exc:
+            raise CSVParseError(f"Invalid amount '{raw_amount}'") from exc
 
         description = str(row[column_mapping["description"]]).strip()
 
@@ -60,12 +60,14 @@ def parse_csv(
         if "category" in column_mapping and column_mapping["category"] in df.columns:
             category_name = str(row[column_mapping["category"]]).strip()
 
-        rows.append(ParsedCSVRow(
-            date=parsed_date.isoformat(),
-            description=description,
-            amount=amount,
-            category_name=category_name,
-        ))
+        rows.append(
+            ParsedCSVRow(
+                date=parsed_date.isoformat(),
+                description=description,
+                amount=amount,
+                category_name=category_name,
+            )
+        )
 
     return rows
 
@@ -84,10 +86,7 @@ def find_duplicates(
     existing_transactions: list[ExistingTransaction],
 ) -> list[int]:
     """Return indices of parsed_rows that appear to be duplicates."""
-    existing_set = {
-        (t.date, t.amount, t.description)
-        for t in existing_transactions
-    }
+    existing_set = {(t.date, t.amount, t.description) for t in existing_transactions}
     duplicates = []
     for i, row in enumerate(parsed_rows):
         key = (row.date, row.amount, row.description)

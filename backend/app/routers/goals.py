@@ -41,9 +41,7 @@ async def get_goal(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Goal:
-    result = await db.execute(
-        select(Goal).where(Goal.id == goal_id, Goal.user_id == current_user.id)
-    )
+    result = await db.execute(select(Goal).where(Goal.id == goal_id, Goal.user_id == current_user.id))
     goal = result.scalar_one_or_none()
     if goal is None:
         raise HTTPException(status_code=404, detail="Goal not found")
@@ -57,9 +55,7 @@ async def update_goal(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Goal:
-    result = await db.execute(
-        select(Goal).where(Goal.id == goal_id, Goal.user_id == current_user.id)
-    )
+    result = await db.execute(select(Goal).where(Goal.id == goal_id, Goal.user_id == current_user.id))
     goal = result.scalar_one_or_none()
     if goal is None:
         raise HTTPException(status_code=404, detail="Goal not found")
@@ -76,9 +72,7 @@ async def delete_goal(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> None:
-    result = await db.execute(
-        select(Goal).where(Goal.id == goal_id, Goal.user_id == current_user.id)
-    )
+    result = await db.execute(select(Goal).where(Goal.id == goal_id, Goal.user_id == current_user.id))
     goal = result.scalar_one_or_none()
     if goal is None:
         raise HTTPException(status_code=404, detail="Goal not found")

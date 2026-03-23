@@ -280,7 +280,9 @@ export default function BudgetsGoals() {
                     </div>
                   </div>
                   <div className="flex items-center justify-between text-sm text-slate-300">
-                    <span className="font-mono">{formatCurrency(budget.spent)} / {formatCurrency(budget.amount)}</span>
+                    <span className="font-mono">
+                      {formatCurrency(budget.spent)} / {formatCurrency(budget.amount)}
+                    </span>
                     <span className={isOver ? 'text-red-400' : 'text-slate-400'}>
                       {isOver
                         ? `${Math.round(pct - 100)}% over budget`
@@ -328,10 +330,9 @@ export default function BudgetsGoals() {
                 goal.target_amount > 0
                   ? Math.min((goal.current_amount / goal.target_amount) * 100, 100)
                   : 0
-              const formattedDate =
-                goal.target_date
-                  ? format(new Date(goal.target_date + 'T00:00:00'), 'MMM d, yyyy')
-                  : null
+              const formattedDate = goal.target_date
+                ? format(new Date(goal.target_date + 'T00:00:00'), 'MMM d, yyyy')
+                : null
               return (
                 <div
                   key={goal.id}
@@ -362,8 +363,7 @@ export default function BudgetsGoals() {
                       {formatCurrency(goal.current_amount)} / {formatCurrency(goal.target_amount)}
                     </span>
                     <span className="text-slate-400">
-                      {Math.round(pct)}%
-                      {formattedDate && ` · ${formattedDate}`}
+                      {Math.round(pct)}%{formattedDate && ` · ${formattedDate}`}
                     </span>
                   </div>
                   <div className="w-full bg-navy-850 rounded-full h-2">

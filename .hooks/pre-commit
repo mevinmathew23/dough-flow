@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(git rev-parse --show-toplevel)"
+
+echo "Running pre-commit checks..."
+
+# ─── Backend ──────────────────────────────────────────
+BACKEND_CHANGED=$(git diff --cached --name-only --diff-filter=ACMR -- 'backend/**/*.py' | head -1)
+
+if [ -n "$BACKEND_CHANGED" ]; then
+    echo "=== Backend Checks ==="
+    BACKEND="$ROOT/backend"
+
+    echo "[1/6] isort"
+    (cd "$BACKEND" && poetry run isort --check-only app/ tests/)
+
+    echo "[2/6] black"
+    (cd "$BACKEND" && poetry run black --check app/ tests/)
+
+    echo "[3/6] pylint"
+    (cd "$BACKEND" && poetry run pylint --fail-under=9 app/)
+
+    echo "[4/6] mypy"
+    (cd "$BACKEND" && poetry run mypy app/)
+
+    echo "[5/6] bandit"
+    (cd "$BACKEND" && poetry run bandit --recursive --skip B105 app/)
+
+    echo "[6/6] pytest"
+    (cd "$BACKEND" && poetry run pytest tests/unit -q)
+else
+    echo "No backend changes, skipping."
+fi
+
+# ─── Frontend ─────────────────────────────────────────
+FRONTEND_CHANGED=$(git diff --cached --name-only --diff-filter=ACMR -- 'frontend/src/**' | head -1)
+
+if [ -n "$FRONTEND_CHANGED" ]; then
+    echo "=== Frontend Checks ==="
+    FRONTEND="$ROOT/frontend"
+
+    echo "[1/2] prettier"
+    (cd "$FRONTEND" && npm run format:check)
+
+    echo "[2/2] tsc + vite build"
+    (cd "$FRONTEND" && npm run build)
+else
+    echo "No frontend changes, skipping."
+fi
+
+echo "All checks passed."

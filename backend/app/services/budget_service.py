@@ -1,7 +1,7 @@
 import uuid
 from datetime import date
 
-from sqlalchemy import select, func, and_
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.budget import Budget
@@ -41,7 +41,7 @@ async def get_budgets_with_spending(
                 )
             )
         )
-        spent = float(spending_result.scalar())
+        spent = float(spending_result.scalar_one())
 
         result.append(
             BudgetWithSpending(

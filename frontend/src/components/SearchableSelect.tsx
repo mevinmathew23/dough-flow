@@ -23,9 +23,10 @@ export default function SearchableSelect({
   const inputRef = useRef<HTMLInputElement>(null)
 
   const filtered = query
-    ? options.filter((o) =>
-        o.label.toLowerCase().includes(query.toLowerCase()) ||
-        o.value.toLowerCase().includes(query.toLowerCase()),
+    ? options.filter(
+        (o) =>
+          o.label.toLowerCase().includes(query.toLowerCase()) ||
+          o.value.toLowerCase().includes(query.toLowerCase()),
       )
     : options
 
@@ -74,7 +75,10 @@ export default function SearchableSelect({
         <span className={selected ? 'text-slate-100' : 'text-slate-500'}>
           {selected ? selected.label : 'Select...'}
         </span>
-        <ChevronDown size={14} className={`text-slate-500 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown
+          size={14}
+          className={`text-slate-500 transition-transform ${open ? 'rotate-180' : ''}`}
+        />
       </button>
 
       {open && (

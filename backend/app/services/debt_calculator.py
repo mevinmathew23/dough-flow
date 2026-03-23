@@ -12,7 +12,6 @@ from app.schemas.debt import (
     PayoffSummary,
 )
 
-
 # Number of compounding periods per year for each frequency
 PERIODS_PER_YEAR: dict[CompoundingFrequency, int] = {
     CompoundingFrequency.DAILY: 365,
@@ -38,7 +37,7 @@ def _effective_monthly_rate(annual_rate: float, frequency: CompoundingFrequency)
     # EAR = (1 + r/n)^n - 1
     ear = (1 + annual_rate / n) ** n - 1
     # Effective monthly rate from EAR: (1 + EAR)^(1/12) - 1
-    monthly_rate = (1 + ear) ** (1 / 12) - 1
+    monthly_rate: float = (1 + ear) ** (1 / 12) - 1
     return monthly_rate
 
 
@@ -129,11 +128,13 @@ def project_growth(
         interest = round(balance * monthly_rate, 2)
         balance = round(balance + interest, 2)
         total_interest += interest
-        schedule.append(GrowthRow(
-            month=month,
-            interest_accrued=interest,
-            balance=balance,
-        ))
+        schedule.append(
+            GrowthRow(
+                month=month,
+                interest_accrued=interest,
+                balance=balance,
+            )
+        )
 
     return GrowthProjection(
         debt_id=debt.id,
@@ -204,13 +205,15 @@ def _simulate_snowball(
             balances[i] = round(balances[i] - principal, 2)
             if balances[i] < 0:
                 balances[i] = 0.0
-            schedules[i].append(AmortizationRow(
-                month=month,
-                payment=round(payments[i], 2),
-                principal=principal,
-                interest=interests[i],
-                balance=balances[i],
-            ))
+            schedules[i].append(
+                AmortizationRow(
+                    month=month,
+                    payment=round(payments[i], 2),
+                    principal=principal,
+                    interest=interests[i],
+                    balance=balances[i],
+                )
+            )
 
     projections = []
     for i, debt in enumerate(sorted_debts):
@@ -219,14 +222,16 @@ def _simulate_snowball(
         total_paid = sum(r.payment for r in schedule)
         months_count = len(schedule)
         payoff_date = start_date + relativedelta(months=months_count)
-        projections.append(PayoffProjection(
-            debt_id=debt.id,
-            months_to_payoff=months_count,
-            total_interest=round(total_interest, 2),
-            total_paid=round(total_paid, 2),
-            payoff_date=payoff_date,
-            schedule=schedule,
-        ))
+        projections.append(
+            PayoffProjection(
+                debt_id=debt.id,
+                months_to_payoff=months_count,
+                total_interest=round(total_interest, 2),
+                total_paid=round(total_paid, 2),
+                payoff_date=payoff_date,
+                schedule=schedule,
+            )
+        )
 
     return projections
 
@@ -264,9 +269,7 @@ def calculate_group_summary(debts: list[Debt]) -> DebtGroupSummary:
 
     # Weighted interest rate by current balance
     if total_balance > 0:
-        weighted_rate = sum(
-            float(d.interest_rate) * float(d.current_balance) for d in debts
-        ) / total_balance
+        weighted_rate = sum(float(d.interest_rate) * float(d.current_balance) for d in debts) / total_balance
     else:
         weighted_rate = 0.0
 

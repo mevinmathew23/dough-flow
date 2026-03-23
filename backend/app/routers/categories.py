@@ -1,7 +1,7 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select, or_
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -19,11 +19,9 @@ async def list_categories(
     current_user: User = Depends(get_current_user),
 ) -> list[Category]:
     result = await db.execute(
-        select(Category).where(
-            or_(Category.user_id == current_user.id, Category.user_id.is_(None))
-        )
+        select(Category).where(or_(Category.user_id == current_user.id, Category.user_id.is_(None)))
     )
-    return result.scalars().all()
+    return list(result.scalars().all())
 
 
 @router.post("", response_model=CategoryResponse, status_code=status.HTTP_201_CREATED)

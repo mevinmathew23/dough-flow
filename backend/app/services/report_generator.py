@@ -1,7 +1,7 @@
 import uuid
 from datetime import date
 
-from sqlalchemy import select, func, and_
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.account import Account
@@ -32,7 +32,7 @@ async def get_monthly_summary(
             )
         )
     )
-    income = float(income_result.scalar())
+    income = float(income_result.scalar_one())
 
     # Total expenses (stored as negative, so we abs)
     expense_result = await db.execute(
@@ -45,7 +45,7 @@ async def get_monthly_summary(
             )
         )
     )
-    expenses = float(expense_result.scalar())
+    expenses = float(expense_result.scalar_one())
 
     savings = income - expenses
     savings_rate = round((savings / income) * 100, 1) if income > 0 else 0.0
@@ -139,7 +139,7 @@ async def get_net_worth(
             func.coalesce(func.sum(Account.balance), 0),
         ).where(Account.user_id == user_id)
     )
-    total = float(result.scalar())
+    total = float(result.scalar_one())
     return NetWorth(net_worth=round(total, 2))
 
 
@@ -164,12 +164,14 @@ async def get_category_comparison(
     for item in current:
         prior_total = prior_map.get(item.category_id, 0.0)
         pct_change = round(((item.total - prior_total) / prior_total) * 100, 1) if prior_total > 0 else 0.0
-        result.append(CategoryComparison(
-            category_id=item.category_id,
-            category_name=item.category_name,
-            category_icon=item.category_icon,
-            total=item.total,
-            prior_total=prior_total,
-            pct_change=pct_change,
-        ))
+        result.append(
+            CategoryComparison(
+                category_id=item.category_id,
+                category_name=item.category_name,
+                category_icon=item.category_icon,
+                total=item.total,
+                prior_total=prior_total,
+                pct_change=pct_change,
+            )
+        )
     return result

@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Install dependencies
+        run: poetry install
+
+      - name: isort
+        run: poetry run isort --check-only app/ tests/
+
+      - name: black
+        run: poetry run black --check app/ tests/
+
+      - name: pylint
+        run: poetry run pylint --fail-under=9 app/
+
+      - name: mypy
+        run: poetry run mypy app/
+
+      - name: bandit
+        run: poetry run bandit --recursive --skip B105 app/
+
+      - name: pytest
+        run: poetry run pytest tests/unit -q
+        env:
+          SECRET_KEY: ci-test-secret-key-not-for-production
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prettier check
+        run: npm run format:check
+
+      - name: Build
+        run: npm run build

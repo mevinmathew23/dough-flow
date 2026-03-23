@@ -291,10 +291,7 @@ export default function CsvImport() {
   // Preview (shared between step 1 saved-mapping path and step 2)
   // -------------------------------------------------------------------------
 
-  const runPreview = async (
-    mapping: Record<string, string>,
-    format: string,
-  ) => {
+  const runPreview = async (mapping: Record<string, string>, format: string) => {
     if (!file) {
       setError('Please select a file first')
       return
@@ -423,9 +420,7 @@ export default function CsvImport() {
                     ? 'border-emerald-500'
                     : 'border-navy-750 hover:border-slate-600'
                 }`}
-                onClick={() =>
-                  setSelectedMappingId((prev) => (prev === m.id ? '' : m.id))
-                }
+                onClick={() => setSelectedMappingId((prev) => (prev === m.id ? '' : m.id))}
               >
                 <div>
                   <p className="text-sm font-medium text-slate-200">{m.institution_name}</p>
@@ -548,7 +543,11 @@ export default function CsvImport() {
         </td>
         <td
           className={`px-4 py-2 text-sm text-right font-mono ${
-            isDuplicate ? 'line-through text-slate-500' : row.amount >= 0 ? 'text-green-400' : 'text-red-400'
+            isDuplicate
+              ? 'line-through text-slate-500'
+              : row.amount >= 0
+                ? 'text-green-400'
+                : 'text-red-400'
           }`}
         >
           {formatCurrency(row.amount)}
@@ -659,7 +658,9 @@ export default function CsvImport() {
         </button>
         <button
           onClick={handleConfirm}
-          disabled={loading || rowsToImport.length === 0 || (saveMapping && !institutionName.trim())}
+          disabled={
+            loading || rowsToImport.length === 0 || (saveMapping && !institutionName.trim())
+          }
           className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
         >
           {loading

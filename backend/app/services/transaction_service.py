@@ -1,7 +1,7 @@
 import uuid
 from datetime import date
 
-from sqlalchemy import select, Select
+from sqlalchemy import Select, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.transaction import Transaction, TransactionType
@@ -15,7 +15,7 @@ def build_transaction_query(
     start_date: date | None = None,
     end_date: date | None = None,
     search: str | None = None,
-) -> Select:
+) -> Select[tuple[Transaction]]:
     """Build a filtered, ordered query for transactions."""
     query = select(Transaction).where(Transaction.user_id == user_id)
 

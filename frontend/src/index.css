@@ -15,7 +15,7 @@
     border-radius: 3px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #2E3F52;
+    background: #2e3f52;
   }
 
   input[type='number']::-webkit-inner-spin-button,
@@ -35,14 +35,14 @@
   input[type='range']::-webkit-slider-track {
     height: 6px;
     border-radius: 3px;
-    background: #1E2D3D;
+    background: #1e2d3d;
   }
   input[type='range']::-webkit-slider-thumb {
     -webkit-appearance: none;
     height: 18px;
     width: 18px;
     border-radius: 50%;
-    background: #10B981;
+    background: #10b981;
     margin-top: -6px;
     box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
     transition: box-shadow 150ms ease;

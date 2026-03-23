@@ -17,7 +17,16 @@ import api from '../api/client'
 import { useCurrency } from '../contexts/CurrencyContext'
 import { Account, CategorySpending, Debt, MonthlySummary, NetWorth } from '../types'
 
-const CHART_COLORS = ['#10b981', '#22c55e', '#a855f7', '#f59e0b', '#ef4444', '#06b6d4', '#ec4899', '#84cc16']
+const CHART_COLORS = [
+  '#10b981',
+  '#22c55e',
+  '#a855f7',
+  '#f59e0b',
+  '#ef4444',
+  '#06b6d4',
+  '#ec4899',
+  '#84cc16',
+]
 
 export default function Dashboard() {
   const { formatCurrency, formatCompact } = useCurrency()
@@ -61,9 +70,7 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="animate-pulse text-slate-500 text-sm tracking-wide">
-        Loading dashboard...
-      </div>
+      <div className="animate-pulse text-slate-500 text-sm tracking-wide">Loading dashboard...</div>
     )
   }
 
@@ -75,12 +82,14 @@ export default function Dashboard() {
 
   const totalDebt = debts.reduce((sum, d) => sum + d.current_balance, 0)
   const priorMonth = trend.length >= 2 ? trend[trend.length - 2] : null
-  const incomeChange = priorMonth && priorMonth.income > 0 && summary
-    ? ((summary.income - priorMonth.income) / priorMonth.income) * 100
-    : null
-  const expenseChange = priorMonth && priorMonth.expenses > 0 && summary
-    ? ((summary.expenses - priorMonth.expenses) / priorMonth.expenses) * 100
-    : null
+  const incomeChange =
+    priorMonth && priorMonth.income > 0 && summary
+      ? ((summary.income - priorMonth.income) / priorMonth.income) * 100
+      : null
+  const expenseChange =
+    priorMonth && priorMonth.expenses > 0 && summary
+      ? ((summary.expenses - priorMonth.expenses) / priorMonth.expenses) * 100
+      : null
 
   return (
     <div>
@@ -103,7 +112,8 @@ export default function Dashboard() {
           </p>
           {incomeChange !== null && (
             <p className={`text-xs mt-1 ${incomeChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              {incomeChange >= 0 ? '+' : ''}{incomeChange.toFixed(1)}% vs last month
+              {incomeChange >= 0 ? '+' : ''}
+              {incomeChange.toFixed(1)}% vs last month
             </p>
           )}
         </div>
@@ -114,7 +124,8 @@ export default function Dashboard() {
           </p>
           {expenseChange !== null && (
             <p className={`text-xs mt-1 ${expenseChange <= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              {expenseChange >= 0 ? '+' : ''}{expenseChange.toFixed(1)}% vs last month
+              {expenseChange >= 0 ? '+' : ''}
+              {expenseChange.toFixed(1)}% vs last month
             </p>
           )}
         </div>
@@ -138,13 +149,32 @@ export default function Dashboard() {
               <LineChart data={trendData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1E2D3D" />
                 <XAxis dataKey="month" tick={{ fill: '#94a3b8', fontSize: 12 }} />
-                <YAxis tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={(v) => formatCompact(v as number)} />
+                <YAxis
+                  tick={{ fill: '#94a3b8', fontSize: 12 }}
+                  tickFormatter={(v) => formatCompact(v as number)}
+                />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#111827', border: '1px solid #1E2D3D', borderRadius: '8px' }}
+                  contentStyle={{
+                    backgroundColor: '#111827',
+                    border: '1px solid #1E2D3D',
+                    borderRadius: '8px',
+                  }}
                   labelStyle={{ color: '#94a3b8' }}
                 />
-                <Line type="monotone" dataKey="income" stroke="#22c55e" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="expenses" stroke="#ef4444" strokeWidth={2} dot={false} />
+                <Line
+                  type="monotone"
+                  dataKey="income"
+                  stroke="#22c55e"
+                  strokeWidth={2}
+                  dot={false}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="expenses"
+                  stroke="#ef4444"
+                  strokeWidth={2}
+                  dot={false}
+                />
               </LineChart>
             </ResponsiveContainer>
           ) : (
@@ -161,7 +191,11 @@ export default function Dashboard() {
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={categorySpending} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="#1E2D3D" horizontal={false} />
-                <XAxis type="number" tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={(v) => formatCompact(v as number)} />
+                <XAxis
+                  type="number"
+                  tick={{ fill: '#94a3b8', fontSize: 12 }}
+                  tickFormatter={(v) => formatCompact(v as number)}
+                />
                 <YAxis
                   type="category"
                   dataKey="category_name"
@@ -169,7 +203,11 @@ export default function Dashboard() {
                   width={120}
                 />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#111827', border: '1px solid #1E2D3D', borderRadius: '8px' }}
+                  contentStyle={{
+                    backgroundColor: '#111827',
+                    border: '1px solid #1E2D3D',
+                    borderRadius: '8px',
+                  }}
                   labelStyle={{ color: '#94a3b8' }}
                   formatter={(value: number) => formatCurrency(value)}
                 />

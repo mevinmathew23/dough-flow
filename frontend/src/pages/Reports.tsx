@@ -91,15 +91,21 @@ export default function Reports() {
             <div className="grid grid-cols-3 gap-4 mb-8">
               <div className="bg-navy-900 border border-navy-800 rounded-xl p-5">
                 <p className="text-sm text-slate-400 mb-1">Income</p>
-                <p className="text-xl font-bold font-mono text-green-400">{formatCurrency(summary.income)}</p>
+                <p className="text-xl font-bold font-mono text-green-400">
+                  {formatCurrency(summary.income)}
+                </p>
               </div>
               <div className="bg-navy-900 border border-navy-800 rounded-xl p-5">
                 <p className="text-sm text-slate-400 mb-1">Expenses</p>
-                <p className="text-xl font-bold font-mono text-red-400">{formatCurrency(summary.expenses)}</p>
+                <p className="text-xl font-bold font-mono text-red-400">
+                  {formatCurrency(summary.expenses)}
+                </p>
               </div>
               <div className="bg-navy-900 border border-navy-800 rounded-xl p-5">
                 <p className="text-sm text-slate-400 mb-1">Savings Rate</p>
-                <p className="text-xl font-bold font-mono text-emerald-400">{summary.savings_rate}%</p>
+                <p className="text-xl font-bold font-mono text-emerald-400">
+                  {summary.savings_rate}%
+                </p>
                 <p className="text-xs text-slate-400 mt-1 font-mono">
                   {formatCurrency(summary.savings)} saved
                 </p>
@@ -117,9 +123,16 @@ export default function Reports() {
                 <BarChart data={trendData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1E2D3D" />
                   <XAxis dataKey="month" tick={{ fill: '#94a3b8', fontSize: 12 }} />
-                  <YAxis tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={(v: number) => formatCompact(v)} />
+                  <YAxis
+                    tick={{ fill: '#94a3b8', fontSize: 12 }}
+                    tickFormatter={(v: number) => formatCompact(v)}
+                  />
                   <Tooltip
-                    contentStyle={{ backgroundColor: '#111827', border: '1px solid #1E2D3D', borderRadius: '8px' }}
+                    contentStyle={{
+                      backgroundColor: '#111827',
+                      border: '1px solid #1E2D3D',
+                      borderRadius: '8px',
+                    }}
                     labelStyle={{ color: '#94a3b8' }}
                     formatter={(value: number) => formatCurrency(value)}
                   />
@@ -154,7 +167,9 @@ export default function Reports() {
                     <span className="flex-1 text-sm">
                       {row.category_icon} {row.category_name}
                     </span>
-                    <span className="w-32 text-right text-sm font-mono">{formatCurrency(row.total)}</span>
+                    <span className="w-32 text-right text-sm font-mono">
+                      {formatCurrency(row.total)}
+                    </span>
                     <span className="w-32 text-right text-sm font-mono text-slate-400">
                       {formatCurrency(row.prior_total)}
                     </span>

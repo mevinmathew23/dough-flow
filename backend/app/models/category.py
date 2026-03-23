@@ -2,11 +2,17 @@ from __future__ import annotations
 
 import enum
 import uuid
+from typing import TYPE_CHECKING
 
-from sqlalchemy import String, Boolean, ForeignKey, Enum
+from sqlalchemy import Boolean, Enum, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+
+if TYPE_CHECKING:
+    from app.models.budget import Budget
+    from app.models.transaction import Transaction
+    from app.models.user import User
 
 
 class CategoryType(str, enum.Enum):

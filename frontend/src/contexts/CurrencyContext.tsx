@@ -14,7 +14,12 @@ const CurrencyContext = createContext<CurrencyContextValue>({
   formatCurrency: (amount) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount),
   formatCompact: (amount) =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: 'compact', maximumFractionDigits: 1 }).format(amount),
+    new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      notation: 'compact',
+      maximumFractionDigits: 1,
+    }).format(amount),
 })
 
 export function CurrencyProvider({ children }: { children: React.ReactNode }) {
@@ -23,9 +28,12 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (!token) return
-    api.get('/auth/me').then((res) => {
-      if (res.data.currency) setCurrencyState(res.data.currency)
-    }).catch(() => {})
+    api
+      .get('/auth/me')
+      .then((res) => {
+        if (res.data.currency) setCurrencyState(res.data.currency)
+      })
+      .catch(() => {})
   }, [])
 
   const setCurrency = async (newCurrency: string) => {

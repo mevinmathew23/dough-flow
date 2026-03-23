@@ -10,11 +10,13 @@ def _make_csv(rows: list[list[str]]) -> bytes:
 
 
 async def test_csv_preview(auth_client: AsyncClient):
-    csv_data = _make_csv([
-        ["Date", "Description", "Amount"],
-        ["03/15/2026", "Grocery Store", "-50.00"],
-        ["03/16/2026", "Gas Station", "-35.00"],
-    ])
+    csv_data = _make_csv(
+        [
+            ["Date", "Description", "Amount"],
+            ["03/15/2026", "Grocery Store", "-50.00"],
+            ["03/16/2026", "Gas Station", "-35.00"],
+        ]
+    )
 
     response = await auth_client.post(
         "/api/csv/preview",
@@ -32,10 +34,12 @@ async def test_csv_preview(auth_client: AsyncClient):
 
 
 async def test_csv_detect_columns(auth_client: AsyncClient):
-    csv_data = _make_csv([
-        ["Transaction Date", "Merchant", "Amount", "Category"],
-        ["03/15/2026", "Store", "50.00", "Food"],
-    ])
+    csv_data = _make_csv(
+        [
+            ["Transaction Date", "Merchant", "Amount", "Category"],
+            ["03/15/2026", "Store", "50.00", "Food"],
+        ]
+    )
 
     response = await auth_client.post(
         "/api/csv/detect-columns",

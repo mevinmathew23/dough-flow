@@ -35,11 +35,23 @@ async def test_list_transactions(auth_client: AsyncClient):
 
     await auth_client.post(
         "/api/transactions",
-        json={"account_id": account_id, "date": "2026-03-01", "amount": 3000, "description": "Paycheck", "type": "income"},
+        json={
+            "account_id": account_id,
+            "date": "2026-03-01",
+            "amount": 3000,
+            "description": "Paycheck",
+            "type": "income",
+        },
     )
     await auth_client.post(
         "/api/transactions",
-        json={"account_id": account_id, "date": "2026-03-05", "amount": -100, "description": "Electric Bill", "type": "expense"},
+        json={
+            "account_id": account_id,
+            "date": "2026-03-05",
+            "amount": -100,
+            "description": "Electric Bill",
+            "type": "expense",
+        },
     )
 
     response = await auth_client.get("/api/transactions")
@@ -59,11 +71,23 @@ async def test_list_transactions_filter_by_account(auth_client: AsyncClient):
 
     await auth_client.post(
         "/api/transactions",
-        json={"account_id": acc1.json()["id"], "date": "2026-03-01", "amount": 100, "description": "A", "type": "income"},
+        json={
+            "account_id": acc1.json()["id"],
+            "date": "2026-03-01",
+            "amount": 100,
+            "description": "A",
+            "type": "income",
+        },
     )
     await auth_client.post(
         "/api/transactions",
-        json={"account_id": acc2.json()["id"], "date": "2026-03-01", "amount": 200, "description": "B", "type": "income"},
+        json={
+            "account_id": acc2.json()["id"],
+            "date": "2026-03-01",
+            "amount": 200,
+            "description": "B",
+            "type": "income",
+        },
     )
 
     response = await auth_client.get(f"/api/transactions?account_id={acc1.json()['id']}")
@@ -103,11 +127,23 @@ async def test_list_transactions_filter_by_type(auth_client: AsyncClient):
 
     await auth_client.post(
         "/api/transactions",
-        json={"account_id": account_id, "date": "2026-03-01", "amount": 3000, "description": "Paycheck", "type": "income"},
+        json={
+            "account_id": account_id,
+            "date": "2026-03-01",
+            "amount": 3000,
+            "description": "Paycheck",
+            "type": "income",
+        },
     )
     await auth_client.post(
         "/api/transactions",
-        json={"account_id": account_id, "date": "2026-03-05", "amount": -50, "description": "Coffee", "type": "expense"},
+        json={
+            "account_id": account_id,
+            "date": "2026-03-05",
+            "amount": -50,
+            "description": "Coffee",
+            "type": "expense",
+        },
     )
 
     response = await auth_client.get("/api/transactions?type=expense")
@@ -125,11 +161,23 @@ async def test_list_transactions_search(auth_client: AsyncClient):
 
     await auth_client.post(
         "/api/transactions",
-        json={"account_id": account_id, "date": "2026-03-01", "amount": -50, "description": "Whole Foods Market", "type": "expense"},
+        json={
+            "account_id": account_id,
+            "date": "2026-03-01",
+            "amount": -50,
+            "description": "Whole Foods Market",
+            "type": "expense",
+        },
     )
     await auth_client.post(
         "/api/transactions",
-        json={"account_id": account_id, "date": "2026-03-02", "amount": -30, "description": "Gas Station", "type": "expense"},
+        json={
+            "account_id": account_id,
+            "date": "2026-03-02",
+            "amount": -30,
+            "description": "Gas Station",
+            "type": "expense",
+        },
     )
 
     response = await auth_client.get("/api/transactions?search=whole+foods")
@@ -144,7 +192,13 @@ async def test_get_transaction(auth_client: AsyncClient):
     )
     txn = await auth_client.post(
         "/api/transactions",
-        json={"account_id": acc.json()["id"], "date": "2026-03-01", "amount": -50, "description": "Test Txn", "type": "expense"},
+        json={
+            "account_id": acc.json()["id"],
+            "date": "2026-03-01",
+            "amount": -50,
+            "description": "Test Txn",
+            "type": "expense",
+        },
     )
     txn_id = txn.json()["id"]
 
@@ -160,7 +214,13 @@ async def test_update_transaction(auth_client: AsyncClient):
     )
     txn = await auth_client.post(
         "/api/transactions",
-        json={"account_id": acc.json()["id"], "date": "2026-03-01", "amount": -50, "description": "Old", "type": "expense"},
+        json={
+            "account_id": acc.json()["id"],
+            "date": "2026-03-01",
+            "amount": -50,
+            "description": "Old",
+            "type": "expense",
+        },
     )
     txn_id = txn.json()["id"]
 
@@ -180,7 +240,13 @@ async def test_delete_transaction(auth_client: AsyncClient):
     )
     txn = await auth_client.post(
         "/api/transactions",
-        json={"account_id": acc.json()["id"], "date": "2026-03-01", "amount": -50, "description": "Delete me", "type": "expense"},
+        json={
+            "account_id": acc.json()["id"],
+            "date": "2026-03-01",
+            "amount": -50,
+            "description": "Delete me",
+            "type": "expense",
+        },
     )
     txn_id = txn.json()["id"]
 
@@ -203,11 +269,23 @@ async def test_bulk_categorize(auth_client: AsyncClient):
 
     txn1 = await auth_client.post(
         "/api/transactions",
-        json={"account_id": account_id, "date": "2026-03-01", "amount": -50, "description": "Store A", "type": "expense"},
+        json={
+            "account_id": account_id,
+            "date": "2026-03-01",
+            "amount": -50,
+            "description": "Store A",
+            "type": "expense",
+        },
     )
     txn2 = await auth_client.post(
         "/api/transactions",
-        json={"account_id": account_id, "date": "2026-03-02", "amount": -30, "description": "Store B", "type": "expense"},
+        json={
+            "account_id": account_id,
+            "date": "2026-03-02",
+            "amount": -30,
+            "description": "Store B",
+            "type": "expense",
+        },
     )
 
     response = await auth_client.post(
