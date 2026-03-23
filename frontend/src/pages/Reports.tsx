@@ -69,12 +69,12 @@ export default function Reports() {
   }))
 
   const selectClass =
-    'bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500'
+    'bg-navy-850 border border-navy-750 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-emerald-500 cursor-pointer'
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Reports</h1>
+        <h1 className="text-2xl font-bold font-display">Reports</h1>
         <div className="flex items-center gap-3">
           <input
             type="month"
@@ -103,18 +103,18 @@ export default function Reports() {
           {/* Savings summary */}
           {summary && (
             <div className="grid grid-cols-3 gap-4 mb-8">
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+              <div className="bg-navy-900 border border-navy-800 rounded-xl p-5">
                 <p className="text-sm text-slate-400 mb-1">Income</p>
-                <p className="text-xl font-bold text-green-400">{formatCurrency(summary.income)}</p>
+                <p className="text-xl font-bold font-mono text-green-400">{formatCurrency(summary.income)}</p>
               </div>
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+              <div className="bg-navy-900 border border-navy-800 rounded-xl p-5">
                 <p className="text-sm text-slate-400 mb-1">Expenses</p>
-                <p className="text-xl font-bold text-red-400">{formatCurrency(summary.expenses)}</p>
+                <p className="text-xl font-bold font-mono text-red-400">{formatCurrency(summary.expenses)}</p>
               </div>
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+              <div className="bg-navy-900 border border-navy-800 rounded-xl p-5">
                 <p className="text-sm text-slate-400 mb-1">Savings Rate</p>
-                <p className="text-xl font-bold text-blue-400">{summary.savings_rate}%</p>
-                <p className="text-xs text-slate-400 mt-1">
+                <p className="text-xl font-bold font-mono text-emerald-400">{summary.savings_rate}%</p>
+                <p className="text-xs text-slate-400 mt-1 font-mono">
                   {formatCurrency(summary.savings)} saved
                 </p>
               </div>
@@ -122,18 +122,18 @@ export default function Reports() {
           )}
 
           {/* Income vs Expense Trend */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 mb-8">
-            <h2 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-4">
+          <div className="bg-navy-900 border border-navy-800 rounded-xl p-6 mb-8">
+            <h2 className="text-sm font-medium font-display text-slate-400 uppercase tracking-wider mb-4">
               Income vs Expenses
             </h2>
             {trendData.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={trendData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1E2D3D" />
                   <XAxis dataKey="month" tick={{ fill: '#94a3b8', fontSize: 12 }} />
                   <YAxis tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={(v: number) => formatCompact(v)} />
                   <Tooltip
-                    contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
+                    contentStyle={{ backgroundColor: '#111827', border: '1px solid #1E2D3D', borderRadius: '8px' }}
                     labelStyle={{ color: '#94a3b8' }}
                     formatter={(value: number) => formatCurrency(value)}
                   />
@@ -148,13 +148,13 @@ export default function Reports() {
           </div>
 
           {/* Category Comparison Table */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-            <h2 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-4">
+          <div className="bg-navy-900 border border-navy-800 rounded-xl p-6">
+            <h2 className="text-sm font-medium font-display text-slate-400 uppercase tracking-wider mb-4">
               Category Comparison (vs Prior Month)
             </h2>
             {comparison.length > 0 ? (
               <div>
-                <div className="flex items-center px-4 py-2 text-xs text-slate-400 uppercase tracking-wider border-b border-slate-800">
+                <div className="flex items-center px-4 py-2 text-xs text-slate-400 uppercase tracking-wider border-b border-navy-800">
                   <span className="flex-1">Category</span>
                   <span className="w-32 text-right">This Month</span>
                   <span className="w-32 text-right">Last Month</span>
@@ -163,17 +163,17 @@ export default function Reports() {
                 {comparison.map((row) => (
                   <div
                     key={row.category_id}
-                    className="flex items-center px-4 py-3 border-b border-slate-800 last:border-0"
+                    className="flex items-center px-4 py-3 border-b border-navy-800 last:border-0"
                   >
                     <span className="flex-1 text-sm">
                       {row.category_icon} {row.category_name}
                     </span>
-                    <span className="w-32 text-right text-sm">{formatCurrency(row.total)}</span>
-                    <span className="w-32 text-right text-sm text-slate-400">
+                    <span className="w-32 text-right text-sm font-mono">{formatCurrency(row.total)}</span>
+                    <span className="w-32 text-right text-sm font-mono text-slate-400">
                       {formatCurrency(row.prior_total)}
                     </span>
                     <span
-                      className={`w-24 text-right text-sm font-medium ${
+                      className={`w-24 text-right text-sm font-medium font-mono ${
                         row.pct_change > 0
                           ? 'text-red-400'
                           : row.pct_change < 0

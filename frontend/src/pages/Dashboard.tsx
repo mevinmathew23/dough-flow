@@ -32,7 +32,7 @@ function formatCompact(amount: number): string {
   return formatCurrency(amount)
 }
 
-const CHART_COLORS = ['#3b82f6', '#22c55e', '#a855f7', '#f59e0b', '#ef4444', '#06b6d4', '#ec4899', '#84cc16']
+const CHART_COLORS = ['#10b981', '#22c55e', '#a855f7', '#f59e0b', '#ef4444', '#06b6d4', '#ec4899', '#84cc16']
 
 export default function Dashboard() {
   const [summary, setSummary] = useState<MonthlySummary | null>(null)
@@ -74,7 +74,11 @@ export default function Dashboard() {
   }, [])
 
   if (loading) {
-    return <div className="text-slate-400">Loading dashboard...</div>
+    return (
+      <div className="animate-pulse text-slate-500 text-sm tracking-wide">
+        Loading dashboard...
+      </div>
+    )
   }
 
   const trendData = trend.map((m) => ({
@@ -94,55 +98,63 @@ export default function Dashboard() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
+      <h1 className="text-2xl font-bold font-display mb-6">Dashboard</h1>
 
       {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-4 gap-4 mb-8">
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+        <div className="bg-navy-900 border border-navy-800 rounded-xl p-5 cursor-pointer">
           <p className="text-sm text-slate-400 mb-1">Net Worth</p>
-          <p className="text-xl font-bold">{formatCurrency(netWorth?.net_worth ?? 0)}</p>
+          <p className="text-xl font-bold">
+            <span className="font-mono">{formatCurrency(netWorth?.net_worth ?? 0)}</span>
+          </p>
         </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+        <div className="bg-navy-900 border border-navy-800 rounded-xl p-5 cursor-pointer">
           <p className="text-sm text-slate-400 mb-1">Monthly Income</p>
-          <p className="text-xl font-bold text-green-400">{formatCurrency(summary?.income ?? 0)}</p>
+          <p className="text-xl font-bold text-green-400">
+            <span className="font-mono">{formatCurrency(summary?.income ?? 0)}</span>
+          </p>
           {incomeChange !== null && (
             <p className={`text-xs mt-1 ${incomeChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
               {incomeChange >= 0 ? '+' : ''}{incomeChange.toFixed(1)}% vs last month
             </p>
           )}
         </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+        <div className="bg-navy-900 border border-navy-800 rounded-xl p-5 cursor-pointer">
           <p className="text-sm text-slate-400 mb-1">Monthly Expenses</p>
-          <p className="text-xl font-bold text-red-400">{formatCurrency(summary?.expenses ?? 0)}</p>
+          <p className="text-xl font-bold text-red-400">
+            <span className="font-mono">{formatCurrency(summary?.expenses ?? 0)}</span>
+          </p>
           {expenseChange !== null && (
             <p className={`text-xs mt-1 ${expenseChange <= 0 ? 'text-green-400' : 'text-red-400'}`}>
               {expenseChange >= 0 ? '+' : ''}{expenseChange.toFixed(1)}% vs last month
             </p>
           )}
         </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+        <div className="bg-navy-900 border border-navy-800 rounded-xl p-5 cursor-pointer">
           <p className="text-sm text-slate-400 mb-1">Total Debt</p>
-          <p className="text-xl font-bold text-orange-400">{formatCurrency(totalDebt)}</p>
+          <p className="text-xl font-bold text-orange-400">
+            <span className="font-mono">{formatCurrency(totalDebt)}</span>
+          </p>
         </div>
       </div>
 
       {/* Charts row */}
       <div className="grid grid-cols-2 gap-6 mb-8">
         {/* Income vs Expense Trend */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-          <h2 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-4">
+        <div className="bg-navy-900 border border-navy-800 rounded-xl p-6">
+          <h2 className="text-sm font-medium font-display text-slate-400 uppercase tracking-wider mb-4">
             Income vs Expenses (6 months)
           </h2>
           {trendData.length > 0 ? (
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={trendData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#1E2D3D" />
                 <XAxis dataKey="month" tick={{ fill: '#94a3b8', fontSize: 12 }} />
                 <YAxis tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={(v) => formatCompact(v as number)} />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
+                  contentStyle={{ backgroundColor: '#111827', border: '1px solid #1E2D3D', borderRadius: '8px' }}
                   labelStyle={{ color: '#94a3b8' }}
                 />
                 <Line type="monotone" dataKey="income" stroke="#22c55e" strokeWidth={2} dot={false} />
@@ -155,14 +167,14 @@ export default function Dashboard() {
         </div>
 
         {/* Spending by Category */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-          <h2 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-4">
+        <div className="bg-navy-900 border border-navy-800 rounded-xl p-6">
+          <h2 className="text-sm font-medium font-display text-slate-400 uppercase tracking-wider mb-4">
             Spending by Category
           </h2>
           {categorySpending.length > 0 ? (
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={categorySpending} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" horizontal={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#1E2D3D" horizontal={false} />
                 <XAxis type="number" tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={(v) => formatCompact(v as number)} />
                 <YAxis
                   type="category"
@@ -171,7 +183,7 @@ export default function Dashboard() {
                   width={120}
                 />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
+                  contentStyle={{ backgroundColor: '#111827', border: '1px solid #1E2D3D', borderRadius: '8px' }}
                   labelStyle={{ color: '#94a3b8' }}
                   formatter={(value: number) => formatCurrency(value)}
                 />
@@ -189,8 +201,8 @@ export default function Dashboard() {
       </div>
 
       {/* Account Balances */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-        <h2 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-4">
+      <div className="bg-navy-900 border border-navy-800 rounded-xl p-6">
+        <h2 className="text-sm font-medium font-display text-slate-400 uppercase tracking-wider mb-4">
           Account Balances
         </h2>
         {accounts.length > 0 ? (
@@ -198,14 +210,14 @@ export default function Dashboard() {
             {accounts.map((account) => (
               <div
                 key={account.id}
-                className="flex items-center justify-between py-2 border-b border-slate-800 last:border-0"
+                className="flex items-center justify-between py-2 border-b border-navy-800 last:border-0 cursor-pointer"
               >
                 <div>
                   <span className="text-sm">{account.name}</span>
                   <span className="text-xs text-slate-400 ml-2">{account.institution}</span>
                 </div>
                 <span
-                  className={`text-sm font-medium ${account.balance >= 0 ? 'text-green-400' : 'text-red-400'}`}
+                  className={`text-sm font-medium font-mono ${account.balance >= 0 ? 'text-green-400' : 'text-red-400'}`}
                 >
                   {formatCurrency(account.balance)}
                 </span>

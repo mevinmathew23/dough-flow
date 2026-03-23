@@ -223,9 +223,9 @@ export default function Transactions() {
     filterAccount || filterCategory || filterType || filterStartDate || filterEndDate || search
 
   const selectClass =
-    'bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500'
+    'bg-navy-850 border border-navy-750 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-emerald-500 cursor-pointer'
   const inputClass =
-    'bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500 w-full'
+    'bg-navy-850 border border-navy-750 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-emerald-500 w-full'
 
   if (loading) {
     return <div className="text-slate-400">Loading transactions...</div>
@@ -234,10 +234,10 @@ export default function Transactions() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Transactions</h1>
+        <h1 className="text-2xl font-bold font-display">Transactions</h1>
         <button
           onClick={openCreate}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
         >
           Add Transaction
         </button>
@@ -304,7 +304,7 @@ export default function Transactions() {
           placeholder="To"
         />
         {hasActiveFilters && (
-          <button onClick={clearFilters} className="text-slate-400 hover:text-white text-sm">
+          <button onClick={clearFilters} className="text-slate-400 hover:text-white text-sm cursor-pointer">
             Clear filters
           </button>
         )}
@@ -312,7 +312,7 @@ export default function Transactions() {
 
       {/* Bulk categorize bar */}
       {selected.size > 0 && (
-        <div className="flex items-center gap-3 mb-4 bg-slate-900 border border-slate-800 rounded-lg px-4 py-2">
+        <div className="flex items-center gap-3 mb-4 bg-navy-900 border border-navy-800 rounded-lg px-4 py-2">
           <span className="text-sm text-slate-300">{selected.size} selected</span>
           <select
             value={bulkCategoryId}
@@ -329,13 +329,13 @@ export default function Transactions() {
           <button
             onClick={handleBulkCategorize}
             disabled={!bulkCategoryId}
-            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-3 py-1 rounded-lg text-sm transition-colors"
+            className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-3 py-1 rounded-lg text-sm transition-colors cursor-pointer"
           >
             Apply
           </button>
           <button
             onClick={() => setSelected(new Set())}
-            className="text-slate-400 hover:text-white text-sm"
+            className="text-slate-400 hover:text-white text-sm cursor-pointer"
           >
             Cancel
           </button>
@@ -355,12 +355,12 @@ export default function Transactions() {
       ) : (
         <div>
           {/* Header row */}
-          <div className="flex items-center gap-3 px-4 py-2 text-xs text-slate-400 uppercase tracking-wider border-b border-slate-800">
+          <div className="flex items-center gap-3 px-4 py-2 text-xs text-slate-400 uppercase tracking-wider border-b border-navy-800">
             <input
               type="checkbox"
               checked={selected.size === transactions.length}
               onChange={toggleSelectAll}
-              className="rounded"
+              className="rounded cursor-pointer"
             />
             <span className="w-24">Date</span>
             <span className="flex-1">Description</span>
@@ -374,13 +374,13 @@ export default function Transactions() {
           {transactions.map((txn) => (
             <div
               key={txn.id}
-              className="flex items-center gap-3 px-4 py-3 border-b border-slate-800 hover:bg-slate-900/50"
+              className="flex items-center gap-3 px-4 py-3 border-b border-navy-800 hover:bg-navy-850/50"
             >
               <input
                 type="checkbox"
                 checked={selected.has(txn.id)}
                 onChange={() => toggleSelect(txn.id)}
-                className="rounded"
+                className="rounded cursor-pointer"
               />
               <span className="w-24 text-sm text-slate-300">
                 {format(new Date(txn.date + 'T00:00:00'), 'MMM d, yyyy')}
@@ -398,7 +398,7 @@ export default function Transactions() {
                 </span>
               </span>
               <span
-                className={`w-28 text-right text-sm font-medium ${txn.amount >= 0 ? 'text-green-400' : 'text-red-400'}`}
+                className={`w-28 text-right text-sm font-medium font-mono ${txn.amount >= 0 ? 'text-green-400' : 'text-red-400'}`}
               >
                 {txn.amount >= 0 ? '+' : '-'}
                 {formatCurrency(txn.amount)}
@@ -406,13 +406,13 @@ export default function Transactions() {
               <span className="w-20 flex gap-2 justify-end">
                 <button
                   onClick={() => openEdit(txn)}
-                  className="text-slate-400 hover:text-white text-sm"
+                  className="text-slate-400 hover:text-white text-sm cursor-pointer"
                 >
                   Edit
                 </button>
                 <button
                   onClick={() => handleDelete(txn.id)}
-                  className="text-slate-400 hover:text-red-400 text-sm"
+                  className="text-slate-400 hover:text-red-400 text-sm cursor-pointer"
                 >
                   Delete
                 </button>
@@ -497,7 +497,7 @@ export default function Transactions() {
           </select>
           <button
             type="submit"
-            className="bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium transition-colors"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
           >
             {editing ? 'Save Changes' : 'Add Transaction'}
           </button>

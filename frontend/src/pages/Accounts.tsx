@@ -125,20 +125,20 @@ export default function Accounts() {
   }
 
   const inputClass =
-    'bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500 w-full'
+    'bg-navy-850 border border-navy-750 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-emerald-500 w-full'
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold">Accounts</h1>
+          <h1 className="text-2xl font-bold font-display">Accounts</h1>
           <p className="text-slate-400 text-sm mt-1">
-            Total balance: {formatCurrency(totalBalance)}
+            Total balance: <span className="font-mono">{formatCurrency(totalBalance)}</span>
           </p>
         </div>
         <button
           onClick={openCreate}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
         >
           Add Account
         </button>
@@ -155,14 +155,14 @@ export default function Accounts() {
         <div className="space-y-6">
           {grouped.map(({ type, accounts: groupAccounts }) => (
             <div key={type}>
-              <h2 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-3">
+              <h2 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-3 font-display">
                 {TYPE_LABELS[type]}
               </h2>
               <div className="space-y-2">
                 {groupAccounts.map((account) => (
                   <div
                     key={account.id}
-                    className="flex items-center justify-between bg-slate-900 border border-slate-800 rounded-lg px-4 py-3"
+                    className="flex items-center justify-between bg-navy-900 border border-navy-800 rounded-lg px-4 py-3"
                   >
                     <div className="flex items-center gap-3">
                       <div>
@@ -177,19 +177,19 @@ export default function Accounts() {
                     </div>
                     <div className="flex items-center gap-4">
                       <span
-                        className={`text-sm font-medium ${account.balance >= 0 ? 'text-green-400' : 'text-red-400'}`}
+                        className={`text-sm font-medium font-mono ${account.balance >= 0 ? 'text-green-400' : 'text-red-400'}`}
                       >
                         {formatCurrency(account.balance)}
                       </span>
                       <button
                         onClick={() => openEdit(account)}
-                        className="text-slate-400 hover:text-white text-sm"
+                        className="text-slate-400 hover:text-white text-sm cursor-pointer"
                       >
                         Edit
                       </button>
                       <button
                         onClick={() => handleDelete(account.id)}
-                        className="text-slate-400 hover:text-red-400 text-sm"
+                        className="text-slate-400 hover:text-red-400 text-sm cursor-pointer"
                       >
                         Delete
                       </button>
@@ -257,7 +257,7 @@ export default function Accounts() {
           />
           <button
             type="submit"
-            className="bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium transition-colors"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
           >
             {editing ? 'Save Changes' : 'Add Account'}
           </button>

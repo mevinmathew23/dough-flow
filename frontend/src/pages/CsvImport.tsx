@@ -22,10 +22,10 @@ const SEMANTIC_FIELDS: { key: string; label: string; required: boolean }[] = [
 ]
 
 const inputClass =
-  'bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500 w-full'
+  'bg-navy-850 border border-navy-750 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-emerald-500 w-full'
 
 const selectClass =
-  'bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 w-full'
+  'bg-navy-850 border border-navy-750 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 w-full'
 
 // ---------------------------------------------------------------------------
 // Helper utilities
@@ -83,9 +83,9 @@ function StepIndicator({ current, total, labels }: StepIndicatorProps) {
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors ${
                   isDone
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-emerald-600 text-white'
                     : isActive
-                      ? 'bg-blue-500 text-white ring-2 ring-blue-300'
+                      ? 'bg-emerald-600 text-white ring-2 ring-emerald-500/30'
                       : 'bg-slate-700 text-slate-400'
                 }`}
               >
@@ -93,7 +93,7 @@ function StepIndicator({ current, total, labels }: StepIndicatorProps) {
               </div>
               <span
                 className={`text-xs mt-1 whitespace-nowrap ${
-                  isActive ? 'text-blue-400' : isDone ? 'text-slate-300' : 'text-slate-500'
+                  isActive ? 'text-emerald-400' : isDone ? 'text-slate-300' : 'text-slate-500'
                 }`}
               >
                 {labels[i]}
@@ -101,7 +101,7 @@ function StepIndicator({ current, total, labels }: StepIndicatorProps) {
             </div>
             {step < total && (
               <div
-                className={`w-16 h-0.5 mb-5 mx-1 ${step < current ? 'bg-blue-600' : 'bg-slate-700'}`}
+                className={`w-16 h-0.5 mb-5 mx-1 ${step < current ? 'bg-emerald-600' : 'bg-slate-700'}`}
               />
             )}
           </div>
@@ -386,7 +386,7 @@ export default function CsvImport() {
           type="file"
           accept=".csv"
           onChange={handleFileChange}
-          className="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
+          className="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 cursor-pointer"
         />
         {file && (
           <p className="text-xs text-slate-400 mt-1">
@@ -420,10 +420,10 @@ export default function CsvImport() {
             {savedMappings.map((m) => (
               <div
                 key={m.id}
-                className={`flex items-center justify-between bg-slate-800 border rounded-lg px-4 py-3 cursor-pointer transition-colors ${
+                className={`flex items-center justify-between bg-navy-850 border rounded-lg px-4 py-3 cursor-pointer transition-colors ${
                   selectedMappingId === m.id
-                    ? 'border-blue-500'
-                    : 'border-slate-700 hover:border-slate-600'
+                    ? 'border-emerald-500'
+                    : 'border-navy-750 hover:border-slate-600'
                 }`}
                 onClick={() =>
                   setSelectedMappingId((prev) => (prev === m.id ? '' : m.id))
@@ -441,7 +441,7 @@ export default function CsvImport() {
                     e.stopPropagation()
                     handleDeleteMapping(m.id)
                   }}
-                  className="text-slate-500 hover:text-red-400 text-xs ml-4 transition-colors"
+                  className="text-slate-500 hover:text-red-400 text-xs ml-4 transition-colors cursor-pointer"
                 >
                   Delete
                 </button>
@@ -456,7 +456,7 @@ export default function CsvImport() {
       <button
         onClick={handleStep1Next}
         disabled={loading || !file}
-        className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg text-sm font-medium transition-colors"
+        className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
       >
         {loading ? 'Processing...' : selectedMapping ? 'Preview Import' : 'Next: Map Columns'}
       </button>
@@ -514,14 +514,14 @@ export default function CsvImport() {
       <div className="flex gap-3">
         <button
           onClick={() => setStep(1)}
-          className="border border-slate-600 hover:border-slate-500 text-slate-300 px-6 py-2 rounded-lg text-sm font-medium transition-colors"
+          className="border border-slate-600 hover:border-slate-500 text-slate-300 px-6 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
         >
           Back
         </button>
         <button
           onClick={handleStep2Next}
           disabled={loading || !isMappingValid()}
-          className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg text-sm font-medium transition-colors"
+          className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
         >
           {loading ? 'Loading preview...' : 'Next: Preview'}
         </button>
@@ -534,7 +534,7 @@ export default function CsvImport() {
     return (
       <tr
         key={idx}
-        className={`border-t border-slate-800 transition-opacity ${
+        className={`border-t border-navy-800 transition-opacity ${
           isDuplicate && !includeDuplicates ? 'opacity-30' : ''
         }`}
       >
@@ -549,7 +549,7 @@ export default function CsvImport() {
           {row.description}
         </td>
         <td
-          className={`px-4 py-2 text-sm text-right ${
+          className={`px-4 py-2 text-sm text-right font-mono ${
             isDuplicate ? 'line-through text-slate-500' : row.amount >= 0 ? 'text-green-400' : 'text-red-400'
           }`}
         >
@@ -593,7 +593,7 @@ export default function CsvImport() {
                 type="checkbox"
                 checked={includeDuplicates}
                 onChange={(e) => setIncludeDuplicates(e.target.checked)}
-                className="w-4 h-4 accent-blue-500"
+                className="w-4 h-4 accent-emerald-500"
               />
               <span className="text-sm text-slate-300">
                 Include duplicate rows ({previewData.duplicate_count})
@@ -601,9 +601,9 @@ export default function CsvImport() {
             </label>
           )}
 
-          <div className="overflow-x-auto rounded-lg border border-slate-800 max-h-96 overflow-y-auto">
+          <div className="overflow-x-auto rounded-lg border border-navy-800 max-h-96 overflow-y-auto">
             <table className="w-full text-left">
-              <thead className="bg-slate-800/80 sticky top-0">
+              <thead className="bg-navy-850/80 sticky top-0">
                 <tr>
                   <th className="px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">
                     Date
@@ -627,13 +627,13 @@ export default function CsvImport() {
           </div>
 
           {/* Save mapping option */}
-          <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 space-y-3">
+          <div className="bg-navy-850/50 border border-navy-750 rounded-lg p-4 space-y-3">
             <label className="flex items-center gap-3 cursor-pointer select-none">
               <input
                 type="checkbox"
                 checked={saveMapping}
                 onChange={(e) => setSaveMapping(e.target.checked)}
-                className="w-4 h-4 accent-blue-500"
+                className="w-4 h-4 accent-emerald-500"
               />
               <span className="text-sm text-slate-300">Save column mapping for future imports</span>
             </label>
@@ -655,14 +655,14 @@ export default function CsvImport() {
       <div className="flex gap-3">
         <button
           onClick={() => setStep(skippedMapping ? 1 : 2)}
-          className="border border-slate-600 hover:border-slate-500 text-slate-300 px-6 py-2 rounded-lg text-sm font-medium transition-colors"
+          className="border border-slate-600 hover:border-slate-500 text-slate-300 px-6 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
         >
           Back
         </button>
         <button
           onClick={handleConfirm}
           disabled={loading || rowsToImport.length === 0 || (saveMapping && !institutionName.trim())}
-          className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg text-sm font-medium transition-colors"
+          className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
         >
           {loading
             ? 'Importing...'
@@ -678,7 +678,7 @@ export default function CsvImport() {
         ✓
       </div>
       <div>
-        <h2 className="text-xl font-bold text-slate-100 mb-1">Import Complete</h2>
+        <h2 className="text-xl font-bold font-display text-slate-100 mb-1">Import Complete</h2>
         {confirmResult && (
           <p className="text-slate-400 text-sm">
             {confirmResult.imported} transaction
@@ -695,13 +695,13 @@ export default function CsvImport() {
       <div className="flex gap-3">
         <button
           onClick={() => navigate('/transactions')}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-medium transition-colors"
+          className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
         >
           View Transactions
         </button>
         <button
           onClick={handleImportAnother}
-          className="border border-slate-600 hover:border-slate-500 text-slate-300 px-6 py-2 rounded-lg text-sm font-medium transition-colors"
+          className="border border-slate-600 hover:border-slate-500 text-slate-300 px-6 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
         >
           Import Another
         </button>
@@ -717,11 +717,11 @@ export default function CsvImport() {
 
   return (
     <div className="max-w-3xl">
-      <h1 className="text-2xl font-bold mb-6">Import CSV</h1>
+      <h1 className="text-2xl font-bold font-display mb-6">Import CSV</h1>
 
       <StepIndicator current={step} total={4} labels={stepLabels} />
 
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+      <div className="bg-navy-900 border border-navy-800 rounded-xl p-6">
         {step === 1 && renderStep1()}
         {step === 2 && renderStep2()}
         {step === 3 && renderStep3()}
