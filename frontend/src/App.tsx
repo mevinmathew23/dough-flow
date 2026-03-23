@@ -3,6 +3,7 @@ import Sidebar from './components/Sidebar'
 import ProtectedRoute from './components/ProtectedRoute'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
+import Accounts from './pages/Accounts'
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -24,7 +25,7 @@ export default function App() {
             <AppLayout>
               <Routes>
                 <Route path="/" element={<Dashboard />} />
-                <Route path="/accounts" element={<div className="text-slate-400">Accounts - Plan 3</div>} />
+                <Route path="/accounts" element={<Accounts />} />
                 <Route path="/transactions" element={<div className="text-slate-400">Transactions - Plan 3</div>} />
                 <Route path="/reports" element={<div className="text-slate-400">Reports - Plan 3</div>} />
                 <Route path="/debt" element={<div className="text-slate-400">Debt Payoff - Plan 3</div>} />
