@@ -1,8 +1,8 @@
 .PHONY: setup hooks
 
 setup: hooks
-	cd backend && poetry install
-	cd frontend && npm install
+	cd dough_flow_api && poetry install
+	cd dough_flow_ui && npm install
 
 hooks:
 	git config core.hooksPath .hooks

@@ -21,7 +21,7 @@ services:
 
   api:
     build:
-      context: ./backend
+      context: ./dough_flow_api
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
@@ -31,7 +31,7 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - ./backend/app:/app/app
+      - ./dough_flow_api/api:/app/api
     deploy:
       resources:
         limits:
@@ -39,7 +39,7 @@ services:
 
   frontend:
     build:
-      context: ./frontend
+      context: ./dough_flow_ui
       dockerfile: Dockerfile
     ports:
       - "3000:80"

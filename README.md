@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="frontend/public/logo.png" alt="Dough Flow" width="120" />
+  <img src="dough_flow_ui/public/logo.png" alt="Dough Flow" width="120" />
 </p>
 
 <h1 align="center">Dough Flow</h1>
@@ -49,13 +49,13 @@ This starts PostgreSQL (5432), the API (8000), and the frontend (3000).
 
 ```bash
 # Backend
-cd backend
+cd dough_flow_api
 poetry install
 poetry run alembic upgrade head
-poetry run uvicorn app.main:app --reload --port 8000
+poetry run uvicorn api.main:app --reload --port 8000
 
 # Frontend
-cd frontend
+cd dough_flow_ui
 npm install
 npm run dev
 ```
@@ -63,7 +63,7 @@ npm run dev
 ### Run tests
 
 ```bash
-cd backend
+cd dough_flow_api
 poetry run pytest tests/
 ```
 

@@ -9,7 +9,7 @@ build/
 
 # Node
 node_modules/
-frontend/dist/
+dough_flow_ui/dist/
 *.tsbuildinfo
 
 # Environment

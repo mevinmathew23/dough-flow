@@ -1,0 +1,46 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Backend: FastAPI",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": [
+                "api.main:app",
+                "--reload",
+                "--port",
+                "8000"
+            ],
+            "python": "${workspaceFolder}/dough_flow_api/.venv/bin/python",
+            "cwd": "${workspaceFolder}/dough_flow_api",
+            "envFile": "${workspaceFolder}/.env",
+            "jinja": true
+        },
+        {
+            "name": "Frontend: Vite",
+            "type": "node",
+            "request": "launch",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": ["run", "dev"],
+            "cwd": "${workspaceFolder}/dough_flow_ui",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Backend: Pytest",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": ["tests/", "-v"],
+            "python": "${workspaceFolder}/dough_flow_api/.venv/bin/python",
+            "cwd": "${workspaceFolder}/dough_flow_api",
+            "jinja": true
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Full Stack (Backend + Frontend)",
+            "configurations": ["Backend: FastAPI", "Frontend: Vite"]
+        }
+    ]
+}

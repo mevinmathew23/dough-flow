@@ -16,17 +16,17 @@ docker compose up -d postgres  # Start just the database
 
 ### Backend
 ```bash
-cd backend
+cd dough_flow_api
 poetry install                 # Install dependencies
-poetry run uvicorn app.main:app --reload --port 8000  # Run dev server
+poetry run uvicorn api.main:app --reload --port 8000  # Run dev server
 poetry run pytest tests/       # Run all tests
-poetry run pytest tests/test_auth.py -v               # Run single test file
-poetry run pytest tests/test_auth.py::test_register -v # Run single test
+poetry run pytest tests/unit/test_auth.py -v               # Run single test file
+poetry run pytest tests/unit/test_auth.py::test_register -v # Run single test
 ```
 
 ### Frontend
 ```bash
-cd frontend
+cd dough_flow_ui
 npm install          # Install dependencies
 npm run dev          # Vite dev server on port 3000
 npm run build        # Production build
@@ -34,14 +34,14 @@ npm run build        # Production build
 
 ### Database Migrations
 ```bash
-cd backend
+cd dough_flow_api
 poetry run alembic revision --autogenerate -m "description"  # Create migration
 poetry run alembic upgrade head                               # Apply migrations
 ```
 
 ## Architecture
 
-### Backend (`backend/app/`)
+### Backend (`dough_flow_api/api/`)
 
 Layered architecture: **Routers** (HTTP) -> **Services** (business logic) -> **Models** (ORM) with **Schemas** (Pydantic DTOs) at the boundary.
 
@@ -55,7 +55,7 @@ Layered architecture: **Routers** (HTTP) -> **Services** (business logic) -> **M
 - `schemas/` - Pydantic models for request validation and response serialization
 - `services/auth.py` - Password hashing (bcrypt), JWT creation/validation (HS256)
 
-### Frontend (`frontend/src/`)
+### Frontend (`dough_flow_ui/src/`)
 
 - `api/client.ts` - Axios instance with Bearer token interceptor; 401 responses clear token and redirect to /login
 - `App.tsx` - Route definitions with ProtectedRoute wrapper; sidebar layout for authenticated pages
@@ -91,8 +91,8 @@ Defined in `.env` at project root. Key vars: `DATABASE_URL`, `SECRET_KEY`, `ALGO
 
 ### Code Quality
 - All new backend code must have corresponding tests
-- Run `poetry run pytest tests/` from `backend/` before considering backend work done
-- Run `npm run build` from `frontend/` before considering frontend work done
+- Run `poetry run pytest tests/` from `dough_flow_api/` before considering backend work done
+- Run `npm run build` from `dough_flow_ui/` before considering frontend work done
 - Follow existing patterns: new endpoints get a router, schema, and test file
 - Keep routers thin — business logic belongs in `services/`
 - All database queries must use async sessions (`await session.execute(...)`)
@@ -107,7 +107,7 @@ Defined in `.env` at project root. Key vars: `DATABASE_URL`, `SECRET_KEY`, `ALGO
 - **TypeScript 5.6** with strict mode (`strict: true`, `noUnusedLocals`, `noUnusedParameters`)
 - **Vite 5.4** dev server on port 3000 with `/api` proxy to `localhost:8000`
 - **TailwindCSS 3.4** with class-based dark mode (`darkMode: 'class'`)
-- No linter/formatter (ESLint/Prettier) configured yet; follow existing code style
+- **Prettier** configured with `.prettierrc` (no semi, single quotes, trailing commas)
 - No test framework configured for frontend yet
 - `npm run build` runs `tsc -b && vite build` — TypeScript must compile cleanly
 
@@ -135,9 +135,9 @@ Defined in `.env` at project root. Key vars: `DATABASE_URL`, `SECRET_KEY`, `ALGO
 ## Python Standards
 
 ### Tooling
-- **Python 3.12**, managed by Poetry (virtualenv in-project: `backend/.venv/`)
+- **Python 3.12**, managed by Poetry (virtualenv in-project: `dough_flow_api/.venv/`)
 - **pytest** with `asyncio_mode = "auto"` — no need for `@pytest.mark.asyncio` decorators
-- No linter/formatter configured yet; follow existing code style
+- **black** + **isort** for formatting, **pylint** + **mypy** (strict) for linting, **bandit** for security
 
 ### Conventions
 - Type hints on all function signatures (params and return types)
@@ -157,6 +157,6 @@ Defined in `.env` at project root. Key vars: `DATABASE_URL`, `SECRET_KEY`, `ALGO
 ### Testing Patterns
 - Tests run against SQLite (`aiosqlite`), not PostgreSQL
 - Use `client` fixture for unauthenticated requests, `auth_client` for authenticated
-- Test files mirror router files: `routers/accounts.py` → `tests/test_accounts.py`
+- Test files mirror router files: `routers/accounts.py` → `tests/unit/test_accounts.py`
 - Assert both status codes and response body structure
 - Each test function is independent — `setup_db` fixture recreates tables per test
