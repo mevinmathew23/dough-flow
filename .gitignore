@@ -29,3 +29,6 @@ pgdata/
 # Test
 test.db
 .pytest_cache/
+
+# Worktrees
+.worktrees/

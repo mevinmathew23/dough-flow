@@ -6,6 +6,8 @@ import Dashboard from './pages/Dashboard'
 import Accounts from './pages/Accounts'
 import Transactions from './pages/Transactions'
 import Reports from './pages/Reports'
+import DebtPayoff from './pages/DebtPayoff'
+import BudgetsGoals from './pages/BudgetsGoals'
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -30,8 +32,8 @@ export default function App() {
                 <Route path="/accounts" element={<Accounts />} />
                 <Route path="/transactions" element={<Transactions />} />
                 <Route path="/reports" element={<Reports />} />
-                <Route path="/debt" element={<div className="text-slate-400">Debt Payoff - Plan 3</div>} />
-                <Route path="/budgets" element={<div className="text-slate-400">Budgets & Goals - Plan 3</div>} />
+                <Route path="/debt" element={<DebtPayoff />} />
+                <Route path="/budgets" element={<BudgetsGoals />} />
                 <Route path="/import" element={<div className="text-slate-400">Import CSV - Plan 3</div>} />
                 <Route path="/settings" element={<div className="text-slate-400">Settings - Plan 3</div>} />
               </Routes>
