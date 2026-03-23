@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from app.database import async_session
-from app.routers import auth, accounts, categories, transactions, budgets
+from app.routers import auth, accounts, budgets, categories, debts, goals, transactions
 from app.seed import seed_default_categories
 
 
@@ -33,6 +33,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(accounts.router)
 app.include_router(categories.router)
+app.include_router(debts.router)
 app.include_router(transactions.router)
 app.include_router(budgets.router)
 
