@@ -8,6 +8,8 @@ import Transactions from './pages/Transactions'
 import Reports from './pages/Reports'
 import DebtPayoff from './pages/DebtPayoff'
 import BudgetsGoals from './pages/BudgetsGoals'
+import CsvImport from './pages/CsvImport'
+import Settings from './pages/Settings'
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -34,8 +36,8 @@ export default function App() {
                 <Route path="/reports" element={<Reports />} />
                 <Route path="/debt" element={<DebtPayoff />} />
                 <Route path="/budgets" element={<BudgetsGoals />} />
-                <Route path="/import" element={<div className="text-slate-400">Import CSV - Plan 3</div>} />
-                <Route path="/settings" element={<div className="text-slate-400">Settings - Plan 3</div>} />
+                <Route path="/import" element={<CsvImport />} />
+                <Route path="/settings" element={<Settings />} />
               </Routes>
             </AppLayout>
           </ProtectedRoute>
