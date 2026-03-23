@@ -1,9 +1,7 @@
 import uuid
 from datetime import date as date_type
 from datetime import datetime
-from typing import Optional
-
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from app.models.transaction import TransactionSource, TransactionType
 
@@ -18,7 +16,7 @@ class TransactionCreate(BaseModel):
 
 
 class TransactionUpdate(BaseModel):
-    date: Optional[date_type] = None
+    date: date_type | None = None
     amount: float | None = None
     description: str | None = None
     category_id: uuid.UUID | None = None
@@ -38,7 +36,7 @@ class TransactionResponse(BaseModel):
     transfer_id: uuid.UUID | None
     created_at: datetime
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
 
 
 class BulkCategorizeRequest(BaseModel):

@@ -24,9 +24,9 @@ router = APIRouter(prefix="/api/transactions", tags=["transactions"])
 async def create_transaction(
     data: TransactionCreate,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> Transaction:
-    txn = Transaction(**data.model_dump(), user_id=user.id)
+    txn = Transaction(**data.model_dump(), user_id=current_user.id)
     db.add(txn)
     await db.commit()
     await db.refresh(txn)
@@ -36,7 +36,7 @@ async def create_transaction(
 @router.get("", response_model=list[TransactionResponse])
 async def list_transactions(
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     account_id: uuid.UUID | None = Query(None),
     category_id: uuid.UUID | None = Query(None),
     type: TransactionType | None = Query(None),
@@ -45,7 +45,7 @@ async def list_transactions(
     search: str | None = Query(None),
 ) -> list[Transaction]:
     query = build_transaction_query(
-        user_id=user.id,
+        user_id=current_user.id,
         account_id=account_id,
         category_id=category_id,
         type=type,
@@ -61,10 +61,10 @@ async def list_transactions(
 async def get_transaction(
     transaction_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> Transaction:
     result = await db.execute(
-        select(Transaction).where(Transaction.id == transaction_id, Transaction.user_id == user.id)
+        select(Transaction).where(Transaction.id == transaction_id, Transaction.user_id == current_user.id)
     )
     txn = result.scalar_one_or_none()
     if txn is None:
@@ -77,10 +77,10 @@ async def update_transaction(
     transaction_id: uuid.UUID,
     data: TransactionUpdate,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> Transaction:
     result = await db.execute(
-        select(Transaction).where(Transaction.id == transaction_id, Transaction.user_id == user.id)
+        select(Transaction).where(Transaction.id == transaction_id, Transaction.user_id == current_user.id)
     )
     txn = result.scalar_one_or_none()
     if txn is None:
@@ -96,10 +96,10 @@ async def update_transaction(
 async def delete_transaction(
     transaction_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> None:
     result = await db.execute(
-        select(Transaction).where(Transaction.id == transaction_id, Transaction.user_id == user.id)
+        select(Transaction).where(Transaction.id == transaction_id, Transaction.user_id == current_user.id)
     )
     txn = result.scalar_one_or_none()
     if txn is None:
@@ -112,9 +112,9 @@ async def delete_transaction(
 async def bulk_categorize(
     data: BulkCategorizeRequest,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> dict[str, int]:
     updated_count = await bulk_categorize_transactions(
-        db, user.id, data.transaction_ids, data.category_id
+        db, current_user.id, data.transaction_ids, data.category_id
     )
     return {"updated_count": updated_count}

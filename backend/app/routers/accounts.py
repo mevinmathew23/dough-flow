@@ -17,9 +17,9 @@ router = APIRouter(prefix="/api/accounts", tags=["accounts"])
 async def create_account(
     data: AccountCreate,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> Account:
-    account = Account(**data.model_dump(), user_id=user.id)
+    account = Account(**data.model_dump(), user_id=current_user.id)
     db.add(account)
     await db.commit()
     await db.refresh(account)
@@ -29,9 +29,9 @@ async def create_account(
 @router.get("", response_model=list[AccountResponse])
 async def list_accounts(
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> list[Account]:
-    result = await db.execute(select(Account).where(Account.user_id == user.id))
+    result = await db.execute(select(Account).where(Account.user_id == current_user.id))
     return result.scalars().all()
 
 
@@ -39,10 +39,10 @@ async def list_accounts(
 async def get_account(
     account_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> Account:
     result = await db.execute(
-        select(Account).where(Account.id == account_id, Account.user_id == user.id)
+        select(Account).where(Account.id == account_id, Account.user_id == current_user.id)
     )
     account = result.scalar_one_or_none()
     if account is None:
@@ -55,10 +55,10 @@ async def update_account(
     account_id: uuid.UUID,
     data: AccountUpdate,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> Account:
     result = await db.execute(
-        select(Account).where(Account.id == account_id, Account.user_id == user.id)
+        select(Account).where(Account.id == account_id, Account.user_id == current_user.id)
     )
     account = result.scalar_one_or_none()
     if account is None:
@@ -74,10 +74,10 @@ async def update_account(
 async def delete_account(
     account_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> None:
     result = await db.execute(
-        select(Account).where(Account.id == account_id, Account.user_id == user.id)
+        select(Account).where(Account.id == account_id, Account.user_id == current_user.id)
     )
     account = result.scalar_one_or_none()
     if account is None:

@@ -1,4 +1,8 @@
 from collections.abc import AsyncGenerator
+import os
+import secrets
+
+os.environ.setdefault("SECRET_KEY", secrets.token_urlsafe(32))
 
 import pytest
 from httpx import ASGITransport, AsyncClient

@@ -16,11 +16,11 @@ router = APIRouter(prefix="/api/categories", tags=["categories"])
 @router.get("", response_model=list[CategoryResponse])
 async def list_categories(
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> list[Category]:
     result = await db.execute(
         select(Category).where(
-            or_(Category.user_id == user.id, Category.user_id.is_(None))
+            or_(Category.user_id == current_user.id, Category.user_id.is_(None))
         )
     )
     return result.scalars().all()
@@ -30,9 +30,9 @@ async def list_categories(
 async def create_category(
     data: CategoryCreate,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> Category:
-    category = Category(**data.model_dump(), user_id=user.id, is_default=False)
+    category = Category(**data.model_dump(), user_id=current_user.id, is_default=False)
     db.add(category)
     await db.commit()
     await db.refresh(category)
@@ -43,7 +43,7 @@ async def create_category(
 async def delete_category(
     category_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> None:
     result = await db.execute(select(Category).where(Category.id == category_id))
     category = result.scalar_one_or_none()
@@ -51,7 +51,7 @@ async def delete_category(
         raise HTTPException(status_code=404, detail="Category not found")
     if category.is_default:
         raise HTTPException(status_code=403, detail="Cannot delete default categories")
-    if category.user_id != user.id:
+    if category.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Category not found")
     await db.delete(category)
     await db.commit()
