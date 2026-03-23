@@ -2,6 +2,7 @@ import { format } from 'date-fns'
 import { useEffect, useState } from 'react'
 import api from '../api/client'
 import Modal from '../components/Modal'
+import { useCurrency } from '../contexts/CurrencyContext'
 import { Account, CompoundingFrequency, Debt, DebtGroupSummary, PayoffSummary } from '../types'
 
 const COMPOUNDING_FREQUENCIES: CompoundingFrequency[] = [
@@ -26,10 +27,6 @@ const FREQUENCY_LABELS: Record<CompoundingFrequency, string> = {
   annually: 'Annually',
 }
 
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)
-}
-
 function formatPercent(rate: number): string {
   return `${(rate * 100).toFixed(2)}%`
 }
@@ -46,6 +43,7 @@ const emptyForm = {
 }
 
 export default function DebtPayoff() {
+  const { formatCurrency } = useCurrency()
   const [debts, setDebts] = useState<Debt[]>([])
   const [accounts, setAccounts] = useState<Account[]>([])
   const [groupSummary, setGroupSummary] = useState<DebtGroupSummary | null>(null)

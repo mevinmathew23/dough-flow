@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../api/client'
+import { useCurrency } from '../contexts/CurrencyContext'
 import { Account, CSVMapping, CSVPreviewResponse, CSVPreviewRow } from '../types'
 
 // ---------------------------------------------------------------------------
@@ -30,10 +31,6 @@ const selectClass =
 // ---------------------------------------------------------------------------
 // Helper utilities
 // ---------------------------------------------------------------------------
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)
-}
 
 /**
  * Auto-map CSV column headers to semantic field keys by fuzzy name matching.
@@ -119,6 +116,7 @@ type WizardStep = 1 | 2 | 3 | 4
 
 export default function CsvImport() {
   const navigate = useNavigate()
+  const { formatCurrency } = useCurrency()
 
   // Shared state
   const [step, setStep] = useState<WizardStep>(1)

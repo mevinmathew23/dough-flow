@@ -2,14 +2,11 @@ import { useEffect, useState } from 'react'
 import { format, startOfMonth, addMonths, subMonths } from 'date-fns'
 import api from '../api/client'
 import Modal from '../components/Modal'
+import { useCurrency } from '../contexts/CurrencyContext'
 import { BudgetWithSpending, Category, Goal } from '../types'
 
 const inputClass =
   'bg-navy-850 border border-navy-750 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-emerald-500 w-full'
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)
-}
 
 function budgetProgressColor(pct: number): string {
   if (pct > 100) return 'bg-red-500'
@@ -18,6 +15,7 @@ function budgetProgressColor(pct: number): string {
 }
 
 export default function BudgetsGoals() {
+  const { formatCurrency } = useCurrency()
   // ---- month state ----
   const [selectedMonth, setSelectedMonth] = useState<Date>(startOfMonth(new Date()))
 

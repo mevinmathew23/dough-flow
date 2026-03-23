@@ -11,25 +11,11 @@ import {
   Legend,
 } from 'recharts'
 import api from '../api/client'
+import { useCurrency } from '../contexts/CurrencyContext'
 import { CategoryComparison, MonthlySummary } from '../types'
 
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)
-}
-
-function formatCompact(amount: number): string {
-  if (Math.abs(amount) >= 1000) {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      notation: 'compact',
-      maximumFractionDigits: 1,
-    }).format(amount)
-  }
-  return formatCurrency(amount)
-}
-
 export default function Reports() {
+  const { formatCurrency, formatCompact } = useCurrency()
   const [month, setMonth] = useState(format(startOfMonth(new Date()), 'yyyy-MM'))
   const [monthRange, setMonthRange] = useState(6)
   const [summary, setSummary] = useState<MonthlySummary | null>(null)

@@ -6,7 +6,7 @@ from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.user import User
 from app.schemas.auth import Token
-from app.schemas.user import UserCreate, UserResponse
+from app.schemas.user import UserCreate, UserResponse, UserUpdate
 from app.services.auth import authenticate_user, create_user, get_user_by_email, create_access_token
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -32,4 +32,17 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSessi
 
 @router.get("/me", response_model=UserResponse)
 async def get_me(current_user: User = Depends(get_current_user)) -> User:
+    return current_user
+
+
+@router.patch("/settings", response_model=UserResponse)
+async def update_settings(
+    updates: UserUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    if updates.currency is not None:
+        current_user.currency = updates.currency
+    await db.commit()
+    await db.refresh(current_user)
     return current_user

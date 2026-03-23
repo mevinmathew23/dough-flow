@@ -58,3 +58,12 @@ async def test_get_me(auth_client: AsyncClient):
     assert response.status_code == 200
     data = response.json()
     assert data["email"] == "test@example.com"
+    assert data["currency"] == "USD"
+
+
+async def test_update_currency(auth_client: AsyncClient):
+    response = await auth_client.patch("/api/auth/settings", json={"currency": "EUR"})
+    assert response.status_code == 200
+    assert response.json()["currency"] == "EUR"
+    me = await auth_client.get("/api/auth/me")
+    assert me.json()["currency"] == "EUR"

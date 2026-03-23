@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import api from '../api/client'
 import Modal from '../components/Modal'
+import { useCurrency } from '../contexts/CurrencyContext'
 import { Account, AccountType } from '../types'
 
 const ACCOUNT_TYPES: AccountType[] = ['checking', 'savings', 'credit', 'investment', 'loan']
@@ -21,11 +22,8 @@ const TYPE_COLORS: Record<AccountType, string> = {
   loan: 'bg-orange-500/10 text-orange-400',
 }
 
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)
-}
-
 export default function Accounts() {
+  const { formatCurrency } = useCurrency()
   const [accounts, setAccounts] = useState<Account[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)

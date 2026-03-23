@@ -10,10 +10,15 @@ class UserCreate(BaseModel):
     name: str
 
 
+class UserUpdate(BaseModel):
+    currency: str | None = None
+
+
 class UserResponse(BaseModel):
     id: uuid.UUID
     email: str
     name: str
+    currency: str
     created_at: datetime
 
     model_config = {"from_attributes": True}
