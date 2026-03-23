@@ -1,9 +1,8 @@
 from collections.abc import AsyncGenerator
-from pathlib import Path
+import os
+import secrets
 
-from dotenv import load_dotenv
-
-load_dotenv(Path(__file__).resolve().parent / ".env.test")
+os.environ.setdefault("SECRET_KEY", secrets.token_urlsafe(32))
 
 import pytest
 from httpx import ASGITransport, AsyncClient
