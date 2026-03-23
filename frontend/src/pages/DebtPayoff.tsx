@@ -2,7 +2,7 @@ import { format } from 'date-fns'
 import { useEffect, useState } from 'react'
 import api from '../api/client'
 import Modal from '../components/Modal'
-import { Account, CompoundingFrequency, Debt, DebtGroupSummary } from '../types'
+import { Account, CompoundingFrequency, Debt, DebtGroupSummary, PayoffSummary } from '../types'
 
 const COMPOUNDING_FREQUENCIES: CompoundingFrequency[] = [
   'daily',
@@ -57,6 +57,11 @@ export default function DebtPayoff() {
   const [form, setForm] = useState(emptyForm)
   const [formError, setFormError] = useState('')
 
+  const [extraMonthly, setExtraMonthly] = useState(0)
+  const [payoffSummary, setPayoffSummary] = useState<PayoffSummary | null>(null)
+  const [expandedDebtId, setExpandedDebtId] = useState<string | null>(null)
+  const [simulatorLoading, setSimulatorLoading] = useState(false)
+
   const fetchAll = async () => {
     try {
       const [debtsRes, accountsRes, groupRes] = await Promise.all([
@@ -78,6 +83,43 @@ export default function DebtPayoff() {
   useEffect(() => {
     fetchAll()
   }, [])
+
+  useEffect(() => {
+    if (debts.length > 0) {
+      const fetchInitialPayoff = async () => {
+        setSimulatorLoading(true)
+        try {
+          const res = await api.get(`/debts/payoff?extra_monthly=${extraMonthly}`)
+          setPayoffSummary(res.data)
+        } catch {
+          // non-critical
+        } finally {
+          setSimulatorLoading(false)
+        }
+      }
+      fetchInitialPayoff()
+    }
+  }, [debts.length])
+
+  const fetchPayoff = async (extra: number) => {
+    if (debts.length === 0) return
+    setSimulatorLoading(true)
+    try {
+      const res = await api.get(`/debts/payoff?extra_monthly=${extra}`)
+      setPayoffSummary(res.data)
+    } catch {
+      // non-critical
+    } finally {
+      setSimulatorLoading(false)
+    }
+  }
+
+  const handleExtraChange = (value: number) => {
+    fetchPayoff(value)
+  }
+
+  const getProjection = (debtId: string) =>
+    payoffSummary?.projections.find((p) => p.debt_id === debtId) ?? null
 
   const getAccountName = (accountId: string): string => {
     const acct = accounts.find((a) => a.id === accountId)
@@ -234,6 +276,56 @@ export default function DebtPayoff() {
         </div>
       )}
 
+      {debts.length > 0 && (
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-6">
+          <h2 className="text-base font-semibold mb-4">Payoff Simulator</h2>
+          <div className="mb-4">
+            <label className="text-sm text-slate-300 block mb-3">
+              Extra Monthly Payment: <span className="font-semibold text-white">{formatCurrency(extraMonthly)}</span>
+            </label>
+            <input
+              type="range"
+              min={0}
+              max={2000}
+              step={50}
+              value={extraMonthly}
+              onChange={(e) => setExtraMonthly(parseInt(e.target.value))}
+              onPointerUp={(e) => handleExtraChange(parseInt((e.target as HTMLInputElement).value))}
+              className="w-full accent-blue-500"
+            />
+            <div className="flex justify-between text-xs text-slate-500 mt-1">
+              <span>$0</span>
+              <span>$2,000</span>
+            </div>
+          </div>
+
+          {simulatorLoading ? (
+            <p className="text-slate-400 text-sm">Calculating...</p>
+          ) : payoffSummary ? (
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-slate-800 rounded-lg p-3">
+                <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">Debt-Free Date</p>
+                <p className="text-sm font-semibold">
+                  {format(new Date(payoffSummary.debt_free_date), 'MMM yyyy')}
+                </p>
+              </div>
+              <div className="bg-slate-800 rounded-lg p-3">
+                <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">Total Interest</p>
+                <p className="text-sm font-semibold text-red-400">
+                  {formatCurrency(payoffSummary.total_interest)}
+                </p>
+              </div>
+              <div className="bg-slate-800 rounded-lg p-3">
+                <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">Interest Saved</p>
+                <p className="text-sm font-semibold text-green-400">
+                  {formatCurrency(payoffSummary.interest_saved_vs_minimum)}
+                </p>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      )}
+
       {debts.length === 0 ? (
         <div className="text-center py-16 text-slate-400">
           <p className="text-lg mb-2">No debts tracked</p>
@@ -246,6 +338,8 @@ export default function DebtPayoff() {
               ? Math.max(0, ((debt.principal_amount - debt.current_balance) / debt.principal_amount) * 100)
               : 0
             const progressCapped = Math.min(100, paidOff)
+            const projection = getProjection(debt.id)
+            const isExpanded = expandedDebtId === debt.id
 
             return (
               <div
@@ -310,6 +404,48 @@ export default function DebtPayoff() {
                     />
                   </div>
                 </div>
+
+                {payoffSummary && (
+                  <div className="mt-3">
+                    <button
+                      onClick={() => setExpandedDebtId(isExpanded ? null : debt.id)}
+                      className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                    >
+                      {isExpanded ? 'Hide Schedule' : 'Show Amortization'}
+                    </button>
+
+                    {isExpanded && projection && (
+                      <div className="mt-3 max-h-64 overflow-y-auto rounded-lg border border-slate-700">
+                        <table className="w-full text-xs">
+                          <thead className="bg-slate-800 sticky top-0">
+                            <tr>
+                              <th className="text-left px-3 py-2 text-slate-400 font-medium">Month</th>
+                              <th className="text-right px-3 py-2 text-slate-400 font-medium">Payment</th>
+                              <th className="text-right px-3 py-2 text-slate-400 font-medium">Principal</th>
+                              <th className="text-right px-3 py-2 text-slate-400 font-medium">Interest</th>
+                              <th className="text-right px-3 py-2 text-slate-400 font-medium">Balance</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {projection.schedule.map((row) => (
+                              <tr key={row.month} className="border-t border-slate-800 hover:bg-slate-800/50">
+                                <td className="px-3 py-1.5 text-slate-300">{row.month}</td>
+                                <td className="px-3 py-1.5 text-right text-slate-300">{formatCurrency(row.payment)}</td>
+                                <td className="px-3 py-1.5 text-right text-green-400">{formatCurrency(row.principal)}</td>
+                                <td className="px-3 py-1.5 text-right text-red-400">{formatCurrency(row.interest)}</td>
+                                <td className="px-3 py-1.5 text-right text-slate-300">{formatCurrency(row.balance)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+
+                    {isExpanded && !projection && (
+                      <p className="mt-2 text-xs text-slate-500">No projection data available.</p>
+                    )}
+                  </div>
+                )}
               </div>
             )
           })}
