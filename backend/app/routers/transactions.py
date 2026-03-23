@@ -15,6 +15,7 @@ from app.schemas.transaction import (
     TransactionResponse,
     TransactionUpdate,
 )
+from app.services.transaction_service import build_transaction_query, bulk_categorize_transactions
 
 router = APIRouter(prefix="/api/transactions", tags=["transactions"])
 
@@ -43,22 +44,15 @@ async def list_transactions(
     end_date: date | None = Query(None),
     search: str | None = Query(None),
 ) -> list[Transaction]:
-    query = select(Transaction).where(Transaction.user_id == user.id)
-
-    if account_id:
-        query = query.where(Transaction.account_id == account_id)
-    if category_id:
-        query = query.where(Transaction.category_id == category_id)
-    if type:
-        query = query.where(Transaction.type == type)
-    if start_date:
-        query = query.where(Transaction.date >= start_date)
-    if end_date:
-        query = query.where(Transaction.date <= end_date)
-    if search:
-        query = query.where(Transaction.description.ilike(f"%{search}%"))
-
-    query = query.order_by(Transaction.date.desc(), Transaction.created_at.desc())
+    query = build_transaction_query(
+        user_id=user.id,
+        account_id=account_id,
+        category_id=category_id,
+        type=type,
+        start_date=start_date,
+        end_date=end_date,
+        search=search,
+    )
     result = await db.execute(query)
     return list(result.scalars().all())
 
@@ -119,15 +113,8 @@ async def bulk_categorize(
     data: BulkCategorizeRequest,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
-) -> dict:
-    result = await db.execute(
-        select(Transaction).where(
-            Transaction.id.in_(data.transaction_ids),
-            Transaction.user_id == user.id,
-        )
+) -> dict[str, int]:
+    updated_count = await bulk_categorize_transactions(
+        db, user.id, data.transaction_ids, data.category_id
     )
-    transactions = list(result.scalars().all())
-    for txn in transactions:
-        txn.category_id = data.category_id
-    await db.commit()
-    return {"updated_count": len(transactions)}
+    return {"updated_count": updated_count}

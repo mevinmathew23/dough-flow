@@ -7,13 +7,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.account import Account
 from app.models.category import Category
 from app.models.transaction import Transaction, TransactionType
+from app.schemas.report import CategoryComparison, CategorySpending, MonthlySummary, NetWorth
 
 
 async def get_monthly_summary(
     db: AsyncSession,
     user_id: uuid.UUID,
     month: date,
-) -> dict:
+) -> MonthlySummary:
     """Get income, expense, and savings for a given month."""
     if month.month == 12:
         next_month = date(month.year + 1, 1, 1)
@@ -49,20 +50,20 @@ async def get_monthly_summary(
     savings = income - expenses
     savings_rate = round((savings / income) * 100, 1) if income > 0 else 0.0
 
-    return {
-        "month": month.isoformat(),
-        "income": round(income, 2),
-        "expenses": round(expenses, 2),
-        "savings": round(savings, 2),
-        "savings_rate": savings_rate,
-    }
+    return MonthlySummary(
+        month=month.isoformat(),
+        income=round(income, 2),
+        expenses=round(expenses, 2),
+        savings=round(savings, 2),
+        savings_rate=savings_rate,
+    )
 
 
 async def get_category_breakdown(
     db: AsyncSession,
     user_id: uuid.UUID,
     month: date,
-) -> list[dict]:
+) -> list[CategorySpending]:
     """Get spending by category for a given month."""
     if month.month == 12:
         next_month = date(month.year + 1, 1, 1)
@@ -90,12 +91,12 @@ async def get_category_breakdown(
     )
 
     return [
-        {
-            "category_id": row.id,
-            "category_name": row.name,
-            "category_icon": row.icon,
-            "total": round(float(row.total), 2),
-        }
+        CategorySpending(
+            category_id=row.id,
+            category_name=row.name,
+            category_icon=row.icon,
+            total=round(float(row.total), 2),
+        )
         for row in result.all()
     ]
 
@@ -104,7 +105,7 @@ async def get_income_vs_expense_trend(
     db: AsyncSession,
     user_id: uuid.UUID,
     months: int = 6,
-) -> list[dict]:
+) -> list[MonthlySummary]:
     """Get monthly income vs expense for the last N months."""
     today = date.today()
     # Start from the first day of (months-1) months ago
@@ -131,7 +132,7 @@ async def get_income_vs_expense_trend(
 async def get_net_worth(
     db: AsyncSession,
     user_id: uuid.UUID,
-) -> dict:
+) -> NetWorth:
     """Calculate net worth from all accounts."""
     result = await db.execute(
         select(
@@ -139,14 +140,14 @@ async def get_net_worth(
         ).where(Account.user_id == user_id)
     )
     total = float(result.scalar())
-    return {"net_worth": round(total, 2)}
+    return NetWorth(net_worth=round(total, 2))
 
 
 async def get_category_comparison(
     db: AsyncSession,
     user_id: uuid.UUID,
     month: date,
-) -> list[dict]:
+) -> list[CategoryComparison]:
     """Get category spending for current month vs prior month with % change."""
     current = await get_category_breakdown(db, user_id, month)
 
@@ -157,15 +158,18 @@ async def get_category_comparison(
         prior_month = date(month.year, month.month - 1, 1)
     prior = await get_category_breakdown(db, user_id, prior_month)
 
-    prior_map = {row["category_id"]: row["total"] for row in prior}
+    prior_map = {item.category_id: item.total for item in prior}
 
     result = []
-    for row in current:
-        prior_total = prior_map.get(row["category_id"], 0.0)
-        pct_change = round(((row["total"] - prior_total) / prior_total) * 100, 1) if prior_total > 0 else 0.0
-        result.append({
-            **row,
-            "prior_total": prior_total,
-            "pct_change": pct_change,
-        })
+    for item in current:
+        prior_total = prior_map.get(item.category_id, 0.0)
+        pct_change = round(((item.total - prior_total) / prior_total) * 100, 1) if prior_total > 0 else 0.0
+        result.append(CategoryComparison(
+            category_id=item.category_id,
+            category_name=item.category_name,
+            category_icon=item.category_icon,
+            total=item.total,
+            prior_total=prior_total,
+            pct_change=pct_change,
+        ))
     return result
