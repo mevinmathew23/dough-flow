@@ -5,7 +5,7 @@ import Modal from '../components/Modal'
 import { BudgetWithSpending, Category, Goal } from '../types'
 
 const inputClass =
-  'bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500 w-full'
+  'bg-navy-850 border border-navy-750 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-emerald-500 w-full'
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)
@@ -210,13 +210,13 @@ export default function BudgetsGoals() {
       {/* ===== BUDGETS SECTION ===== */}
       <section>
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold">Budgets</h1>
+          <h1 className="text-2xl font-bold font-display">Budgets</h1>
           <div className="flex items-center gap-4">
             {/* Month selector */}
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setSelectedMonth((m) => subMonths(m, 1))}
-                className="text-slate-400 hover:text-white px-2 py-1 rounded transition-colors"
+                className="text-slate-400 hover:text-white px-2 py-1 rounded transition-colors cursor-pointer"
                 aria-label="Previous month"
               >
                 ←
@@ -226,7 +226,7 @@ export default function BudgetsGoals() {
               </span>
               <button
                 onClick={() => setSelectedMonth((m) => addMonths(m, 1))}
-                className="text-slate-400 hover:text-white px-2 py-1 rounded transition-colors"
+                className="text-slate-400 hover:text-white px-2 py-1 rounded transition-colors cursor-pointer"
                 aria-label="Next month"
               >
                 →
@@ -234,7 +234,7 @@ export default function BudgetsGoals() {
             </div>
             <button
               onClick={openCreateBudget}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
             >
               Add Budget
             </button>
@@ -259,7 +259,7 @@ export default function BudgetsGoals() {
               return (
                 <div
                   key={budget.id}
-                  className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3"
+                  className="bg-navy-900 border border-navy-800 rounded-xl p-4 space-y-3"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -269,27 +269,27 @@ export default function BudgetsGoals() {
                     <div className="flex items-center gap-3">
                       <button
                         onClick={() => openEditBudget(budget)}
-                        className="text-slate-400 hover:text-white text-sm transition-colors"
+                        className="text-slate-400 hover:text-white text-sm transition-colors cursor-pointer"
                       >
                         Edit
                       </button>
                       <button
                         onClick={() => handleDeleteBudget(budget.id)}
-                        className="text-slate-400 hover:text-red-400 text-sm transition-colors"
+                        className="text-slate-400 hover:text-red-400 text-sm transition-colors cursor-pointer"
                       >
                         Delete
                       </button>
                     </div>
                   </div>
                   <div className="flex items-center justify-between text-sm text-slate-300">
-                    <span>{formatCurrency(budget.spent)} / {formatCurrency(budget.amount)}</span>
+                    <span className="font-mono">{formatCurrency(budget.spent)} / {formatCurrency(budget.amount)}</span>
                     <span className={isOver ? 'text-red-400' : 'text-slate-400'}>
                       {isOver
                         ? `${Math.round(pct - 100)}% over budget`
                         : `${Math.round(100 - pct)}% remaining`}
                     </span>
                   </div>
-                  <div className="w-full bg-slate-800 rounded-full h-2">
+                  <div className="w-full bg-navy-850 rounded-full h-2">
                     <div
                       className={`${budgetProgressColor(pct)} h-2 rounded-full transition-all`}
                       style={{ width: `${barWidth}%` }}
@@ -305,10 +305,10 @@ export default function BudgetsGoals() {
       {/* ===== GOALS SECTION ===== */}
       <section>
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold">Savings Goals</h1>
+          <h1 className="text-2xl font-bold font-display">Savings Goals</h1>
           <button
             onClick={openCreateGoal}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
           >
             Add Goal
           </button>
@@ -337,7 +337,7 @@ export default function BudgetsGoals() {
               return (
                 <div
                   key={goal.id}
-                  className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3"
+                  className="bg-navy-900 border border-navy-800 rounded-xl p-4 space-y-3"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -347,20 +347,20 @@ export default function BudgetsGoals() {
                     <div className="flex items-center gap-3">
                       <button
                         onClick={() => openEditGoal(goal)}
-                        className="text-slate-400 hover:text-white text-sm transition-colors"
+                        className="text-slate-400 hover:text-white text-sm transition-colors cursor-pointer"
                       >
                         Edit
                       </button>
                       <button
                         onClick={() => handleDeleteGoal(goal.id)}
-                        className="text-slate-400 hover:text-red-400 text-sm transition-colors"
+                        className="text-slate-400 hover:text-red-400 text-sm transition-colors cursor-pointer"
                       >
                         Delete
                       </button>
                     </div>
                   </div>
                   <div className="flex items-center justify-between text-sm text-slate-300">
-                    <span>
+                    <span className="font-mono">
                       {formatCurrency(goal.current_amount)} / {formatCurrency(goal.target_amount)}
                     </span>
                     <span className="text-slate-400">
@@ -368,9 +368,9 @@ export default function BudgetsGoals() {
                       {formattedDate && ` · ${formattedDate}`}
                     </span>
                   </div>
-                  <div className="w-full bg-slate-800 rounded-full h-2">
+                  <div className="w-full bg-navy-850 rounded-full h-2">
                     <div
-                      className="bg-blue-500 h-2 rounded-full transition-all"
+                      className="bg-emerald-500 h-2 rounded-full transition-all"
                       style={{ width: `${pct}%` }}
                     />
                   </div>
@@ -417,7 +417,7 @@ export default function BudgetsGoals() {
           />
           <button
             type="submit"
-            className="bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium transition-colors"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
           >
             {editingBudget ? 'Save Changes' : 'Add Budget'}
           </button>
@@ -473,7 +473,7 @@ export default function BudgetsGoals() {
           />
           <button
             type="submit"
-            className="bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium transition-colors"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
           >
             {editingGoal ? 'Save Changes' : 'Add Goal'}
           </button>

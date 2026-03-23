@@ -226,7 +226,7 @@ export default function DebtPayoff() {
   const sortedDebts = [...debts].sort((a, b) => a.priority_order - b.priority_order)
 
   const inputClass =
-    'bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500 w-full'
+    'bg-navy-850 border border-navy-750 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-emerald-500 w-full'
 
   if (loading) {
     return <div className="text-slate-400">Loading debts...</div>
@@ -236,14 +236,14 @@ export default function DebtPayoff() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold">Debt Payoff</h1>
+          <h1 className="text-2xl font-bold font-display">Debt Payoff</h1>
           <p className="text-slate-400 text-sm mt-1">
             Track and prioritize your debts to pay them off faster
           </p>
         </div>
         <button
           onClick={openCreate}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
         >
           Add Debt
         </button>
@@ -253,35 +253,35 @@ export default function DebtPayoff() {
 
       {debts.length > 0 && groupSummary && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <div className="bg-navy-900 border border-navy-800 rounded-xl p-4">
             <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">Total Debt</p>
-            <p className="text-xl font-bold text-red-400">
+            <p className="text-xl font-bold text-red-400 font-mono">
               {formatCurrency(groupSummary.total_current_balance)}
             </p>
           </div>
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <div className="bg-navy-900 border border-navy-800 rounded-xl p-4">
             <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">Original Principal</p>
-            <p className="text-xl font-bold">{formatCurrency(groupSummary.total_principal)}</p>
+            <p className="text-xl font-bold font-mono">{formatCurrency(groupSummary.total_principal)}</p>
           </div>
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <div className="bg-navy-900 border border-navy-800 rounded-xl p-4">
             <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">Weighted Rate</p>
-            <p className="text-xl font-bold text-orange-400">
+            <p className="text-xl font-bold text-orange-400 font-mono">
               {formatPercent(groupSummary.weighted_interest_rate)}
             </p>
           </div>
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <div className="bg-navy-900 border border-navy-800 rounded-xl p-4">
             <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">Monthly Minimum</p>
-            <p className="text-xl font-bold">{formatCurrency(groupSummary.total_minimum_payment)}</p>
+            <p className="text-xl font-bold font-mono">{formatCurrency(groupSummary.total_minimum_payment)}</p>
           </div>
         </div>
       )}
 
       {debts.length > 0 && (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-6">
-          <h2 className="text-base font-semibold mb-4">Payoff Simulator</h2>
+        <div className="bg-navy-900 border border-navy-800 rounded-xl p-5 mb-6">
+          <h2 className="text-base font-semibold font-display mb-4">Payoff Simulator</h2>
           <div className="mb-4">
             <label className="text-sm text-slate-300 block mb-3">
-              Extra Monthly Payment: <span className="font-semibold text-white">{formatCurrency(extraMonthly)}</span>
+              Extra Monthly Payment: <span className="font-semibold text-white font-mono">{formatCurrency(extraMonthly)}</span>
             </label>
             <input
               type="range"
@@ -291,11 +291,11 @@ export default function DebtPayoff() {
               value={extraMonthly}
               onChange={(e) => setExtraMonthly(parseInt(e.target.value))}
               onPointerUp={(e) => handleExtraChange(parseInt((e.target as HTMLInputElement).value))}
-              className="w-full accent-blue-500"
+              className="w-full cursor-pointer"
             />
             <div className="flex justify-between text-xs text-slate-500 mt-1">
-              <span>$0</span>
-              <span>$2,000</span>
+              <span className="font-mono">$0</span>
+              <span className="font-mono">$2,000</span>
             </div>
           </div>
 
@@ -303,21 +303,21 @@ export default function DebtPayoff() {
             <p className="text-slate-400 text-sm">Calculating...</p>
           ) : payoffSummary ? (
             <div className="grid grid-cols-3 gap-4">
-              <div className="bg-slate-800 rounded-lg p-3">
+              <div className="bg-navy-850 rounded-lg p-3">
                 <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">Debt-Free Date</p>
-                <p className="text-sm font-semibold">
+                <p className="text-sm font-semibold font-mono">
                   {format(new Date(payoffSummary.debt_free_date), 'MMM yyyy')}
                 </p>
               </div>
-              <div className="bg-slate-800 rounded-lg p-3">
+              <div className="bg-navy-850 rounded-lg p-3">
                 <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">Total Interest</p>
-                <p className="text-sm font-semibold text-red-400">
+                <p className="text-sm font-semibold text-red-400 font-mono">
                   {formatCurrency(payoffSummary.total_interest)}
                 </p>
               </div>
-              <div className="bg-slate-800 rounded-lg p-3">
+              <div className="bg-navy-850 rounded-lg p-3">
                 <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">Interest Saved</p>
-                <p className="text-sm font-semibold text-green-400">
+                <p className="text-sm font-semibold text-green-400 font-mono">
                   {formatCurrency(payoffSummary.interest_saved_vs_minimum)}
                 </p>
               </div>
@@ -344,7 +344,7 @@ export default function DebtPayoff() {
             return (
               <div
                 key={debt.id}
-                className="bg-slate-900 border border-slate-800 rounded-xl p-4"
+                className="bg-navy-900 border border-navy-800 rounded-xl p-4"
               >
                 <div className="flex items-start justify-between mb-3">
                   <div>
@@ -353,7 +353,7 @@ export default function DebtPayoff() {
                         #{debt.priority_order}
                       </span>
                       <span className="text-sm font-semibold">{getAccountName(debt.account_id)}</span>
-                      <span className="bg-orange-500/10 text-orange-400 px-2 py-0.5 rounded-full text-xs">
+                      <span className="bg-orange-500/10 text-orange-400 px-2 py-0.5 rounded-full text-xs font-mono">
                         {formatPercent(debt.interest_rate)} APR
                       </span>
                     </div>
@@ -367,13 +367,13 @@ export default function DebtPayoff() {
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => openEdit(debt)}
-                      className="text-slate-400 hover:text-white text-sm"
+                      className="text-slate-400 hover:text-white text-sm cursor-pointer"
                     >
                       Edit
                     </button>
                     <button
                       onClick={() => handleDelete(debt.id)}
-                      className="text-slate-400 hover:text-red-400 text-sm"
+                      className="text-slate-400 hover:text-red-400 text-sm cursor-pointer"
                     >
                       Delete
                     </button>
@@ -382,24 +382,24 @@ export default function DebtPayoff() {
 
                 <div className="flex items-center justify-between text-sm mb-2">
                   <span className="text-slate-400">
-                    Balance: <span className="text-white font-medium">{formatCurrency(debt.current_balance)}</span>
+                    Balance: <span className="text-white font-medium font-mono">{formatCurrency(debt.current_balance)}</span>
                   </span>
                   <span className="text-slate-400">
-                    Principal: <span className="text-slate-300">{formatCurrency(debt.principal_amount)}</span>
+                    Principal: <span className="text-slate-300 font-mono">{formatCurrency(debt.principal_amount)}</span>
                   </span>
                   <span className="text-slate-400">
-                    Min payment: <span className="text-slate-300">{formatCurrency(debt.minimum_payment)}</span>
+                    Min payment: <span className="text-slate-300 font-mono">{formatCurrency(debt.minimum_payment)}</span>
                   </span>
                 </div>
 
                 <div className="mt-2">
                   <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
                     <span>Paid off</span>
-                    <span>{progressCapped.toFixed(1)}%</span>
+                    <span className="font-mono">{progressCapped.toFixed(1)}%</span>
                   </div>
-                  <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-2 bg-navy-850 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-blue-500 rounded-full transition-all"
+                      className="h-full bg-emerald-500 rounded-full transition-all"
                       style={{ width: `${progressCapped}%` }}
                     />
                   </div>
@@ -409,15 +409,15 @@ export default function DebtPayoff() {
                   <div className="mt-3">
                     <button
                       onClick={() => setExpandedDebtId(isExpanded ? null : debt.id)}
-                      className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                      className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
                     >
                       {isExpanded ? 'Hide Schedule' : 'Show Amortization'}
                     </button>
 
                     {isExpanded && projection && (
-                      <div className="mt-3 max-h-64 overflow-y-auto rounded-lg border border-slate-700">
+                      <div className="mt-3 max-h-64 overflow-y-auto rounded-lg border border-navy-750">
                         <table className="w-full text-xs">
-                          <thead className="bg-slate-800 sticky top-0">
+                          <thead className="bg-navy-850 sticky top-0">
                             <tr>
                               <th className="text-left px-3 py-2 text-slate-400 font-medium">Month</th>
                               <th className="text-right px-3 py-2 text-slate-400 font-medium">Payment</th>
@@ -428,12 +428,12 @@ export default function DebtPayoff() {
                           </thead>
                           <tbody>
                             {projection.schedule.map((row) => (
-                              <tr key={row.month} className="border-t border-slate-800 hover:bg-slate-800/50">
-                                <td className="px-3 py-1.5 text-slate-300">{row.month}</td>
-                                <td className="px-3 py-1.5 text-right text-slate-300">{formatCurrency(row.payment)}</td>
-                                <td className="px-3 py-1.5 text-right text-green-400">{formatCurrency(row.principal)}</td>
-                                <td className="px-3 py-1.5 text-right text-red-400">{formatCurrency(row.interest)}</td>
-                                <td className="px-3 py-1.5 text-right text-slate-300">{formatCurrency(row.balance)}</td>
+                              <tr key={row.month} className="border-t border-navy-800 hover:bg-navy-850/50">
+                                <td className="px-3 py-1.5 text-slate-300 font-mono">{row.month}</td>
+                                <td className="px-3 py-1.5 text-right text-slate-300 font-mono">{formatCurrency(row.payment)}</td>
+                                <td className="px-3 py-1.5 text-right text-green-400 font-mono">{formatCurrency(row.principal)}</td>
+                                <td className="px-3 py-1.5 text-right text-red-400 font-mono">{formatCurrency(row.interest)}</td>
+                                <td className="px-3 py-1.5 text-right text-slate-300 font-mono">{formatCurrency(row.balance)}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -550,7 +550,7 @@ export default function DebtPayoff() {
           />
           <button
             type="submit"
-            className="bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium transition-colors"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
           >
             {editing ? 'Save Changes' : 'Add Debt'}
           </button>
