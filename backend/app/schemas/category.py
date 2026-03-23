@@ -1,6 +1,6 @@
 import uuid
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from app.models.category import CategoryType
 
@@ -18,4 +18,4 @@ class CategoryResponse(BaseModel):
     icon: str
     is_default: bool
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)

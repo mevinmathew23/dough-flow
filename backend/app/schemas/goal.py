@@ -1,7 +1,7 @@
 import uuid
 from datetime import date
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class GoalCreate(BaseModel):
@@ -29,4 +29,4 @@ class GoalResponse(BaseModel):
     target_date: date | None
     icon: str
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)

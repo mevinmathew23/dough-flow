@@ -17,9 +17,9 @@ router = APIRouter(prefix="/api/goals", tags=["goals"])
 async def create_goal(
     data: GoalCreate,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> Goal:
-    goal = Goal(**data.model_dump(), user_id=user.id)
+    goal = Goal(**data.model_dump(), user_id=current_user.id)
     db.add(goal)
     await db.commit()
     await db.refresh(goal)
@@ -29,9 +29,9 @@ async def create_goal(
 @router.get("", response_model=list[GoalResponse])
 async def list_goals(
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> list[Goal]:
-    result = await db.execute(select(Goal).where(Goal.user_id == user.id))
+    result = await db.execute(select(Goal).where(Goal.user_id == current_user.id))
     return list(result.scalars().all())
 
 
@@ -39,10 +39,10 @@ async def list_goals(
 async def get_goal(
     goal_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> Goal:
     result = await db.execute(
-        select(Goal).where(Goal.id == goal_id, Goal.user_id == user.id)
+        select(Goal).where(Goal.id == goal_id, Goal.user_id == current_user.id)
     )
     goal = result.scalar_one_or_none()
     if goal is None:
@@ -55,10 +55,10 @@ async def update_goal(
     goal_id: uuid.UUID,
     data: GoalUpdate,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> Goal:
     result = await db.execute(
-        select(Goal).where(Goal.id == goal_id, Goal.user_id == user.id)
+        select(Goal).where(Goal.id == goal_id, Goal.user_id == current_user.id)
     )
     goal = result.scalar_one_or_none()
     if goal is None:
@@ -74,10 +74,10 @@ async def update_goal(
 async def delete_goal(
     goal_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> None:
     result = await db.execute(
-        select(Goal).where(Goal.id == goal_id, Goal.user_id == user.id)
+        select(Goal).where(Goal.id == goal_id, Goal.user_id == current_user.id)
     )
     goal = result.scalar_one_or_none()
     if goal is None:

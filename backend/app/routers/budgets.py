@@ -19,11 +19,11 @@ router = APIRouter(prefix="/api/budgets", tags=["budgets"])
 async def create_budget(
     data: BudgetCreate,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> Budget:
     existing = await db.execute(
         select(Budget).where(
-            Budget.user_id == user.id,
+            Budget.user_id == current_user.id,
             Budget.category_id == data.category_id,
             Budget.month == data.month,
         )
@@ -34,7 +34,7 @@ async def create_budget(
             detail="Budget already exists for this category and month",
         )
 
-    budget = Budget(**data.model_dump(), user_id=user.id)
+    budget = Budget(**data.model_dump(), user_id=current_user.id)
     db.add(budget)
     await db.commit()
     await db.refresh(budget)
@@ -45,10 +45,10 @@ async def create_budget(
 async def list_budgets(
     month: date = Query(...),
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> list[Budget]:
     result = await db.execute(
-        select(Budget).where(Budget.user_id == user.id, Budget.month == month)
+        select(Budget).where(Budget.user_id == current_user.id, Budget.month == month)
     )
     return list(result.scalars().all())
 
@@ -57,9 +57,9 @@ async def list_budgets(
 async def list_budgets_with_spending(
     month: date = Query(...),
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> list[BudgetWithSpending]:
-    return await get_budgets_with_spending(db, user.id, month)
+    return await get_budgets_with_spending(db, current_user.id, month)
 
 
 @router.patch("/{budget_id}", response_model=BudgetResponse)
@@ -67,10 +67,10 @@ async def update_budget(
     budget_id: uuid.UUID,
     data: BudgetUpdate,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> Budget:
     result = await db.execute(
-        select(Budget).where(Budget.id == budget_id, Budget.user_id == user.id)
+        select(Budget).where(Budget.id == budget_id, Budget.user_id == current_user.id)
     )
     budget = result.scalar_one_or_none()
     if budget is None:
@@ -86,10 +86,10 @@ async def update_budget(
 async def delete_budget(
     budget_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> None:
     result = await db.execute(
-        select(Budget).where(Budget.id == budget_id, Budget.user_id == user.id)
+        select(Budget).where(Budget.id == budget_id, Budget.user_id == current_user.id)
     )
     budget = result.scalar_one_or_none()
     if budget is None:

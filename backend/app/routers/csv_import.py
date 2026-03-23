@@ -28,7 +28,7 @@ router = APIRouter(prefix="/api/csv", tags=["csv_import"])
 @router.post("/detect-columns", response_model=CSVColumnDetectionResponse)
 async def detect_csv_columns(
     file: UploadFile = File(...),
-    _user: User = Depends(get_current_user),
+    _current_user: User = Depends(get_current_user),
 ) -> CSVColumnDetectionResponse:
     content = await file.read()
     try:
@@ -45,7 +45,7 @@ async def preview_csv(
     date_format: str = Form("%m/%d/%Y"),
     account_id: str | None = Form(None),
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> CSVPreviewResponse:
     content = await file.read()
     mapping = json.loads(column_mapping)
@@ -60,7 +60,7 @@ async def preview_csv(
     if account_id:
         result = await db.execute(
             select(Transaction).where(
-                Transaction.user_id == user.id,
+                Transaction.user_id == current_user.id,
                 Transaction.account_id == uuid.UUID(account_id),
             )
         )
@@ -93,7 +93,7 @@ async def preview_csv(
 async def confirm_import(
     data: CSVConfirmRequest,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> CSVConfirmResponse:
     imported = 0
     skipped = 0
@@ -106,7 +106,7 @@ async def confirm_import(
         txn_type = TransactionType.EXPENSE if row.amount < 0 else TransactionType.INCOME
         txn = Transaction(
             account_id=data.account_id,
-            user_id=user.id,
+            user_id=current_user.id,
             date=date_type.fromisoformat(row.date),
             amount=row.amount,
             description=row.description,
@@ -119,7 +119,7 @@ async def confirm_import(
     # Save mapping if requested
     if data.save_mapping and data.column_mapping and data.institution_name:
         mapping = CSVMapping(
-            user_id=user.id,
+            user_id=current_user.id,
             institution_name=data.institution_name,
             column_mapping=data.column_mapping,
             date_format=data.date_format,
@@ -134,10 +134,10 @@ async def confirm_import(
 @router.get("/mappings", response_model=list[CSVMappingResponse])
 async def list_mappings(
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> list[CSVMapping]:
     result = await db.execute(
-        select(CSVMapping).where(CSVMapping.user_id == user.id)
+        select(CSVMapping).where(CSVMapping.user_id == current_user.id)
     )
     return list(result.scalars().all())
 
@@ -146,10 +146,10 @@ async def list_mappings(
 async def delete_mapping(
     mapping_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> None:
     result = await db.execute(
-        select(CSVMapping).where(CSVMapping.id == mapping_id, CSVMapping.user_id == user.id)
+        select(CSVMapping).where(CSVMapping.id == mapping_id, CSVMapping.user_id == current_user.id)
     )
     mapping = result.scalar_one_or_none()
     if mapping is None:

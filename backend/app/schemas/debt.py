@@ -1,7 +1,7 @@
 import uuid
 from datetime import date
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from app.models.debt import CompoundingFrequency
 
@@ -38,7 +38,7 @@ class DebtResponse(BaseModel):
     priority_order: int
     target_payoff_date: date | None
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AmortizationRow(BaseModel):

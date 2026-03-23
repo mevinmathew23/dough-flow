@@ -1,4 +1,7 @@
 from collections.abc import AsyncGenerator
+import os
+
+os.environ.setdefault("SECRET_KEY", "test-secret-key-for-testing-only")
 
 import pytest
 from httpx import ASGITransport, AsyncClient
