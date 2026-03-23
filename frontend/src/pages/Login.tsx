@@ -33,9 +33,7 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-navy-950">
       <div className="bg-navy-900 p-8 rounded-xl border border-navy-800 w-full max-w-md shadow-2xl shadow-black/40">
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center flex-shrink-0">
-            <span className="text-emerald-400 font-bold text-sm">D</span>
-          </div>
+          <img src="/logo.png" alt="Dough Flow" className="w-10 h-10 rounded-lg" />
           <h1 className="text-2xl font-bold text-emerald-400 font-display">Dough Flow</h1>
         </div>
         <h2 className="text-lg text-slate-200 mb-4">{isRegister ? 'Create Account' : 'Sign In'}</h2>

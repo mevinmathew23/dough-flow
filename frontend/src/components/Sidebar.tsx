@@ -33,9 +33,7 @@ export default function Sidebar() {
   return (
     <aside className="w-60 bg-navy-900 border-r border-navy-800 min-h-screen p-5 flex flex-col">
       <div className="flex items-center gap-2.5 mb-10 px-2">
-        <div className="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center">
-          <span className="text-emerald-400 font-display font-bold text-sm">D</span>
-        </div>
+        <img src="/logo.png" alt="Dough Flow" className="w-8 h-8 rounded-lg" />
         <span className="font-display font-bold text-lg text-slate-100 tracking-tight">
           Dough Flow
         </span>
