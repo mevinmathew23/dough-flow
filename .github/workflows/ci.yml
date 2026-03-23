@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  backend:
+  api:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -46,7 +46,7 @@ jobs:
         env:
           SECRET_KEY: ci-test-secret-key-not-for-production
 
-  frontend:
+  ui:
     runs-on: ubuntu-latest
     defaults:
       run:
