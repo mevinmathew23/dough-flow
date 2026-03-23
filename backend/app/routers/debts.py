@@ -9,8 +9,19 @@ from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.debt import Debt
 from app.models.user import User
-from app.schemas.debt import DebtCreate, DebtResponse, DebtUpdate, PayoffSummary
-from app.services.debt_calculator import calculate_payoff_summary
+from app.schemas.debt import (
+    DebtCreate,
+    DebtGroupSummary,
+    DebtResponse,
+    DebtUpdate,
+    GrowthProjection,
+    PayoffSummary,
+)
+from app.services.debt_calculator import (
+    calculate_group_summary,
+    calculate_payoff_summary,
+    project_growth,
+)
 
 router = APIRouter(prefix="/api/debts", tags=["debts"])
 
@@ -58,6 +69,42 @@ async def get_payoff_projection(
             interest_saved_vs_minimum=0,
         )
     return calculate_payoff_summary(debts, extra_monthly, date.today())
+
+
+@router.get("/growth", response_model=list[GrowthProjection])
+async def get_growth_projections(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+    months: int = Query(12, ge=1, le=120),
+) -> list[GrowthProjection]:
+    """Project how each debt grows over time from interest alone (no payments)."""
+    result = await db.execute(
+        select(Debt).where(Debt.user_id == user.id).order_by(Debt.priority_order)
+    )
+    debts = list(result.scalars().all())
+    return [project_growth(d, months) for d in debts]
+
+
+@router.get("/grouped", response_model=DebtGroupSummary)
+async def get_grouped_summary(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> DebtGroupSummary:
+    """Get all debts aggregated: total principal, total balance, weighted interest rate."""
+    result = await db.execute(
+        select(Debt).where(Debt.user_id == user.id).order_by(Debt.priority_order)
+    )
+    debts = list(result.scalars().all())
+    if not debts:
+        return DebtGroupSummary(
+            debt_ids=[],
+            total_principal=0,
+            total_current_balance=0,
+            weighted_interest_rate=0,
+            total_minimum_payment=0,
+            debt_count=0,
+        )
+    return calculate_group_summary(debts)
 
 
 @router.get("/{debt_id}", response_model=DebtResponse)
