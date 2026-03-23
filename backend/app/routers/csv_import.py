@@ -12,28 +12,30 @@ from app.models.csv_mapping import CSVMapping
 from app.models.transaction import Transaction, TransactionSource, TransactionType
 from app.models.user import User
 from app.schemas.csv_import import (
+    CSVColumnDetectionResponse,
     CSVConfirmRequest,
     CSVConfirmResponse,
     CSVMappingResponse,
     CSVPreviewResponse,
     CSVPreviewRow,
+    ExistingTransaction,
 )
 from app.services.csv_parser import CSVParseError, detect_columns, find_duplicates, parse_csv
 
 router = APIRouter(prefix="/api/csv", tags=["csv_import"])
 
 
-@router.post("/detect-columns")
+@router.post("/detect-columns", response_model=CSVColumnDetectionResponse)
 async def detect_csv_columns(
     file: UploadFile = File(...),
     _user: User = Depends(get_current_user),
-) -> dict:
+) -> CSVColumnDetectionResponse:
     content = await file.read()
     try:
         columns = detect_columns(content)
     except CSVParseError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    return {"columns": columns}
+    return CSVColumnDetectionResponse(columns=columns)
 
 
 @router.post("/preview", response_model=CSVPreviewResponse)
@@ -63,17 +65,17 @@ async def preview_csv(
             )
         )
         existing = [
-            {"date": t.date.isoformat(), "amount": float(t.amount), "description": t.description}
+            ExistingTransaction(date=t.date.isoformat(), amount=float(t.amount), description=t.description)
             for t in result.scalars().all()
         ]
         duplicate_indices = find_duplicates(parsed, existing)
 
     rows = [
         CSVPreviewRow(
-            date=row["date"],
-            description=row["description"],
-            amount=row["amount"],
-            category_name=row.get("category_name"),
+            date=row.date,
+            description=row.description,
+            amount=row.amount,
+            category_name=row.category_name,
             is_duplicate=i in duplicate_indices,
         )
         for i, row in enumerate(parsed)

@@ -24,8 +24,7 @@ async def monthly_summary(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ) -> MonthlySummary:
-    data = await get_monthly_summary(db, user.id, month)
-    return MonthlySummary(**data)
+    return await get_monthly_summary(db, user.id, month)
 
 
 @router.get("/categories", response_model=list[CategorySpending])
@@ -34,8 +33,7 @@ async def category_breakdown(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ) -> list[CategorySpending]:
-    data = await get_category_breakdown(db, user.id, month)
-    return [CategorySpending(**row) for row in data]
+    return await get_category_breakdown(db, user.id, month)
 
 
 @router.get("/trend", response_model=list[MonthlySummary])
@@ -44,8 +42,7 @@ async def income_expense_trend(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ) -> list[MonthlySummary]:
-    data = await get_income_vs_expense_trend(db, user.id, months)
-    return [MonthlySummary(**row) for row in data]
+    return await get_income_vs_expense_trend(db, user.id, months)
 
 
 @router.get("/categories/comparison", response_model=list[CategoryComparison])
@@ -54,8 +51,7 @@ async def category_comparison(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ) -> list[CategoryComparison]:
-    data = await get_category_comparison(db, user.id, month)
-    return [CategoryComparison(**row) for row in data]
+    return await get_category_comparison(db, user.id, month)
 
 
 @router.get("/net-worth", response_model=NetWorth)
@@ -63,5 +59,4 @@ async def net_worth(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ) -> NetWorth:
-    data = await get_net_worth(db, user.id)
-    return NetWorth(**data)
+    return await get_net_worth(db, user.id)

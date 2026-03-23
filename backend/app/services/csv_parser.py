@@ -1,7 +1,9 @@
 import io
-from datetime import date, datetime
+from datetime import datetime
 
 import pandas as pd
+
+from app.schemas.csv_import import ExistingTransaction, ParsedCSVRow
 
 
 class CSVParseError(Exception):
@@ -10,15 +12,15 @@ class CSVParseError(Exception):
 
 def parse_csv(
     file_content: bytes,
-    column_mapping: dict,
+    column_mapping: dict[str, str],
     date_format: str = "%m/%d/%Y",
-) -> list[dict]:
+) -> list[ParsedCSVRow]:
     """Parse a CSV file using the provided column mapping.
 
     column_mapping maps our field names to CSV column names:
         {"date": "Transaction Date", "description": "Description", "amount": "Amount"}
 
-    Returns list of dicts with keys: date, description, amount (and optionally category).
+    Returns list of ParsedCSVRow with date, description, amount (and optionally category_name).
     """
     try:
         df = pd.read_csv(io.BytesIO(file_content))
@@ -34,7 +36,7 @@ def parse_csv(
         if csv_col not in df.columns:
             raise CSVParseError(f"Column '{csv_col}' not found in CSV. Available: {list(df.columns)}")
 
-    rows: list[dict] = []
+    rows: list[ParsedCSVRow] = []
     for _, row in df.iterrows():
         try:
             raw_date = str(row[column_mapping["date"]]).strip()
@@ -54,17 +56,16 @@ def parse_csv(
 
         description = str(row[column_mapping["description"]]).strip()
 
-        entry: dict = {
-            "date": parsed_date.isoformat(),
-            "description": description,
-            "amount": amount,
-        }
-
-        # Optional category column
+        category_name: str | None = None
         if "category" in column_mapping and column_mapping["category"] in df.columns:
-            entry["category_name"] = str(row[column_mapping["category"]]).strip()
+            category_name = str(row[column_mapping["category"]]).strip()
 
-        rows.append(entry)
+        rows.append(ParsedCSVRow(
+            date=parsed_date.isoformat(),
+            description=description,
+            amount=amount,
+            category_name=category_name,
+        ))
 
     return rows
 
@@ -79,17 +80,17 @@ def detect_columns(file_content: bytes) -> list[str]:
 
 
 def find_duplicates(
-    parsed_rows: list[dict],
-    existing_transactions: list[dict],
+    parsed_rows: list[ParsedCSVRow],
+    existing_transactions: list[ExistingTransaction],
 ) -> list[int]:
     """Return indices of parsed_rows that appear to be duplicates."""
     existing_set = {
-        (t["date"], t["amount"], t["description"])
+        (t.date, t.amount, t.description)
         for t in existing_transactions
     }
     duplicates = []
     for i, row in enumerate(parsed_rows):
-        key = (row["date"], row["amount"], row["description"])
+        key = (row.date, row.amount, row.description)
         if key in existing_set:
             duplicates.append(i)
     return duplicates

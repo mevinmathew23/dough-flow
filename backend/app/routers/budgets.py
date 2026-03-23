@@ -2,16 +2,15 @@ import uuid
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select, func, and_
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.budget import Budget
-from app.models.category import Category
-from app.models.transaction import Transaction, TransactionType
 from app.models.user import User
 from app.schemas.budget import BudgetCreate, BudgetResponse, BudgetUpdate, BudgetWithSpending
+from app.services.budget_service import get_budgets_with_spending
 
 router = APIRouter(prefix="/api/budgets", tags=["budgets"])
 
@@ -22,7 +21,6 @@ async def create_budget(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ) -> Budget:
-    # Check for duplicate budget (same user, category, month)
     existing = await db.execute(
         select(Budget).where(
             Budget.user_id == user.id,
@@ -61,49 +59,7 @@ async def list_budgets_with_spending(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ) -> list[BudgetWithSpending]:
-    # Get budgets for this month
-    budget_result = await db.execute(
-        select(Budget, Category).join(Category, Budget.category_id == Category.id).where(
-            Budget.user_id == user.id, Budget.month == month
-        )
-    )
-    rows = budget_result.all()
-
-    # Calculate date range for the month
-    if month.month == 12:
-        next_month = date(month.year + 1, 1, 1)
-    else:
-        next_month = date(month.year, month.month + 1, 1)
-
-    result = []
-    for budget, category in rows:
-        # Get spending for this category in this month
-        spending_result = await db.execute(
-            select(func.coalesce(func.sum(func.abs(Transaction.amount)), 0)).where(
-                and_(
-                    Transaction.user_id == user.id,
-                    Transaction.category_id == budget.category_id,
-                    Transaction.type == TransactionType.EXPENSE,
-                    Transaction.date >= month,
-                    Transaction.date < next_month,
-                )
-            )
-        )
-        spent = float(spending_result.scalar())
-
-        result.append(
-            BudgetWithSpending(
-                id=budget.id,
-                category_id=budget.category_id,
-                category_name=category.name,
-                category_icon=category.icon,
-                amount=float(budget.amount),
-                spent=spent,
-                month=budget.month,
-            )
-        )
-
-    return result
+    return await get_budgets_with_spending(db, user.id, month)
 
 
 @router.patch("/{budget_id}", response_model=BudgetResponse)
