@@ -9,12 +9,16 @@ const TYPE_LABELS: Record<TransactionType, string> = {
   income: 'Income',
   expense: 'Expense',
   transfer: 'Transfer',
+  payment: 'Payment',
+  adjustment: 'Adjustment',
 }
 
 const TYPE_COLORS: Record<TransactionType, string> = {
   income: 'bg-green-500/10 text-green-400',
   expense: 'bg-red-500/10 text-red-400',
   transfer: 'bg-blue-500/10 text-blue-400',
+  payment: 'bg-amber-500/10 text-amber-400',
+  adjustment: 'bg-gray-500/10 text-gray-400',
 }
 
 export default function Transactions() {
@@ -47,9 +51,11 @@ export default function Transactions() {
   })
   const [formError, setFormError] = useState('')
 
-  // Bulk categorize
+  // Bulk actions
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [bulkCategoryId, setBulkCategoryId] = useState('')
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [successMessage, setSuccessMessage] = useState('')
 
   const fetchTransactions = async () => {
     const params = new URLSearchParams()
@@ -141,7 +147,7 @@ export default function Transactions() {
     const payload = {
       account_id: form.account_id,
       date: form.date,
-      amount: form.type === 'expense' ? -amount : amount,
+      amount: form.type === 'expense' || form.type === 'payment' ? -amount : amount,
       description: form.description,
       category_id: form.category_id || null,
       type: form.type,
@@ -207,6 +213,28 @@ export default function Transactions() {
     }
   }
 
+  const handleBulkDelete = async () => {
+    if (selected.size === 0) return
+    try {
+      const res = await api.post('/transactions/bulk-delete', {
+        transaction_ids: Array.from(selected),
+      })
+      const count = res.data.deleted_count as number
+      setSelected(new Set())
+      setDeleteConfirmOpen(false)
+      setSuccessMessage(`Successfully deleted ${count} transaction${count !== 1 ? 's' : ''}`)
+      setTimeout(() => setSuccessMessage(''), 4000)
+      await fetchTransactions()
+    } catch {
+      setError('Failed to delete transactions')
+      setDeleteConfirmOpen(false)
+    }
+  }
+
+  const selectedTotal = transactions
+    .filter((t) => selected.has(t.id))
+    .reduce((sum, t) => sum + Math.abs(t.amount), 0)
+
   const clearFilters = () => {
     setFilterAccount('')
     setFilterCategory('')
@@ -239,6 +267,9 @@ export default function Transactions() {
           Add Transaction
         </button>
       </div>
+
+      {/* Success message */}
+      {successMessage && <p className="text-green-400 text-sm mb-4">{successMessage}</p>}
 
       {/* Error display */}
       {error && !modalOpen && <p className="text-red-400 text-sm mb-4">{error}</p>}
@@ -285,6 +316,8 @@ export default function Transactions() {
           <option value="income">Income</option>
           <option value="expense">Expense</option>
           <option value="transfer">Transfer</option>
+          <option value="payment">Payment</option>
+          <option value="adjustment">Adjustment</option>
         </select>
         <input
           type="date"
@@ -332,6 +365,12 @@ export default function Transactions() {
             className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-3 py-1 rounded-lg text-sm transition-colors cursor-pointer"
           >
             Apply
+          </button>
+          <button
+            onClick={() => setDeleteConfirmOpen(true)}
+            className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-lg text-sm transition-colors cursor-pointer"
+          >
+            Delete ({selected.size})
           </button>
           <button
             onClick={() => setSelected(new Set())}
@@ -401,12 +440,22 @@ export default function Transactions() {
                 className={`w-28 text-right text-sm font-medium font-mono ${
                   txn.type === 'transfer'
                     ? 'text-blue-400'
-                    : txn.amount >= 0
-                      ? 'text-green-400'
-                      : 'text-red-400'
+                    : txn.type === 'payment'
+                      ? 'text-amber-400'
+                      : txn.type === 'adjustment'
+                        ? 'text-gray-400'
+                        : txn.amount >= 0
+                          ? 'text-green-400'
+                          : 'text-red-400'
                 }`}
               >
-                {txn.type === 'transfer' ? '' : txn.amount >= 0 ? '+' : '-'}
+                {txn.type === 'transfer' || txn.type === 'adjustment'
+                  ? ''
+                  : txn.type === 'payment'
+                    ? '-'
+                    : txn.amount >= 0
+                      ? '+'
+                      : '-'}
                 {formatCurrency(txn.amount)}
               </span>
               <span className="w-20 flex gap-2 justify-end">
@@ -427,6 +476,33 @@ export default function Transactions() {
           ))}
         </div>
       )}
+
+      {/* Bulk Delete Confirmation Modal */}
+      <Modal
+        open={deleteConfirmOpen}
+        onClose={() => setDeleteConfirmOpen(false)}
+        title="Confirm Bulk Delete"
+      >
+        <p className="text-slate-300 text-sm mb-2">
+          Are you sure you want to delete {selected.size} transaction
+          {selected.size !== 1 ? 's' : ''}?
+        </p>
+        <p className="text-slate-400 text-sm mb-6">Total amount: {formatCurrency(selectedTotal)}</p>
+        <div className="flex gap-3 justify-end">
+          <button
+            onClick={() => setDeleteConfirmOpen(false)}
+            className="text-slate-400 hover:text-white px-4 py-2 rounded-lg text-sm cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleBulkDelete}
+            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+          >
+            Delete {selected.size} Transaction{selected.size !== 1 ? 's' : ''}
+          </button>
+        </div>
+      </Modal>
 
       {/* Add/Edit Modal */}
       <Modal
@@ -488,6 +564,8 @@ export default function Transactions() {
             <option value="expense">Expense</option>
             <option value="income">Income</option>
             <option value="transfer">Transfer</option>
+            <option value="payment">Payment</option>
+            <option value="adjustment">Adjustment</option>
           </select>
           <select
             value={form.category_id}
@@ -496,7 +574,13 @@ export default function Transactions() {
           >
             <option value="">No category</option>
             {categories
-              .filter((c) => c.type === form.type || form.type === 'transfer')
+              .filter(
+                (c) =>
+                  c.type === form.type ||
+                  form.type === 'transfer' ||
+                  form.type === 'payment' ||
+                  form.type === 'adjustment',
+              )
               .map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.icon} {c.name}

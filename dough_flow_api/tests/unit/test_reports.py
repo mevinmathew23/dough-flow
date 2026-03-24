@@ -124,6 +124,86 @@ async def test_net_worth(auth_client: AsyncClient):
     assert response.json()["net_worth"] == 13000
 
 
+async def test_payment_not_counted_as_income(auth_client: AsyncClient):
+    """PAYMENT transactions must not appear in income or expenses."""
+    account_id = await _seed_transactions(auth_client)
+
+    await auth_client.post(
+        "/api/transactions",
+        json={
+            "account_id": account_id,
+            "date": "2026-03-15",
+            "amount": -500,
+            "description": "Credit card payment",
+            "type": "payment",
+        },
+    )
+
+    response = await auth_client.get("/api/reports/monthly?month=2026-03-01")
+    assert response.status_code == 200
+    data = response.json()
+    # Income should still be 5000 from the seed data, not affected by payment
+    assert data["income"] == 5000
+    # Expenses should still be 1800 from the seed data, not affected by payment
+    assert data["expenses"] == 1800
+
+
+async def test_adjustment_not_counted_as_income_or_expense(auth_client: AsyncClient):
+    """ADJUSTMENT transactions must not appear in income or expenses."""
+    account_id = await _seed_transactions(auth_client)
+
+    await auth_client.post(
+        "/api/transactions",
+        json={
+            "account_id": account_id,
+            "date": "2026-03-15",
+            "amount": 1000,
+            "description": "Opening balance adjustment",
+            "type": "adjustment",
+        },
+    )
+
+    response = await auth_client.get("/api/reports/monthly?month=2026-03-01")
+    assert response.status_code == 200
+    data = response.json()
+    # Income should still be 5000, not 6000
+    assert data["income"] == 5000
+    # Expenses should still be 1800
+    assert data["expenses"] == 1800
+
+
+async def test_monthly_summary_includes_payments_field(auth_client: AsyncClient):
+    """Monthly summary must include a payments field summing PAYMENT transactions."""
+    account_id = await _seed_transactions(auth_client)
+
+    await auth_client.post(
+        "/api/transactions",
+        json={
+            "account_id": account_id,
+            "date": "2026-03-15",
+            "amount": -500,
+            "description": "Credit card payment",
+            "type": "payment",
+        },
+    )
+    await auth_client.post(
+        "/api/transactions",
+        json={
+            "account_id": account_id,
+            "date": "2026-03-20",
+            "amount": -200,
+            "description": "Loan payment",
+            "type": "payment",
+        },
+    )
+
+    response = await auth_client.get("/api/reports/monthly?month=2026-03-01")
+    assert response.status_code == 200
+    data = response.json()
+    assert "payments" in data
+    assert data["payments"] == 700
+
+
 async def test_unauthorized_reports(client: AsyncClient):
     response = await client.get("/api/reports/monthly?month=2026-03-01")
     assert response.status_code == 401

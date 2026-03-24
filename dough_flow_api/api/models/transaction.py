@@ -20,6 +20,8 @@ class TransactionType(str, enum.Enum):
     INCOME = "income"
     EXPENSE = "expense"
     TRANSFER = "transfer"
+    PAYMENT = "payment"
+    ADJUSTMENT = "adjustment"
 
 
 class TransactionSource(str, enum.Enum):
