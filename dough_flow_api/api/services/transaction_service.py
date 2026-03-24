@@ -53,3 +53,22 @@ async def bulk_categorize_transactions(
         txn.category_id = category_id
     await db.commit()
     return len(transactions)
+
+
+async def bulk_delete_transactions(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    transaction_ids: list[uuid.UUID],
+) -> int:
+    """Delete transactions by IDs. Returns count deleted."""
+    result = await db.execute(
+        select(Transaction).where(
+            Transaction.id.in_(transaction_ids),
+            Transaction.user_id == user_id,
+        )
+    )
+    transactions = list(result.scalars().all())
+    for txn in transactions:
+        await db.delete(txn)
+    await db.commit()
+    return len(transactions)

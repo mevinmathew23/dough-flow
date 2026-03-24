@@ -11,11 +11,17 @@ from api.models.transaction import Transaction, TransactionType
 from api.models.user import User
 from api.schemas.transaction import (
     BulkCategorizeRequest,
+    BulkDeleteRequest,
+    BulkDeleteResponse,
     TransactionCreate,
     TransactionResponse,
     TransactionUpdate,
 )
-from api.services.transaction_service import build_transaction_query, bulk_categorize_transactions
+from api.services.transaction_service import (
+    build_transaction_query,
+    bulk_categorize_transactions,
+    bulk_delete_transactions,
+)
 
 router = APIRouter(prefix="/api/transactions", tags=["transactions"])
 
@@ -106,6 +112,16 @@ async def delete_transaction(
         raise HTTPException(status_code=404, detail="Transaction not found")
     await db.delete(txn)
     await db.commit()
+
+
+@router.post("/bulk-delete", response_model=BulkDeleteResponse)
+async def bulk_delete(
+    data: BulkDeleteRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> BulkDeleteResponse:
+    deleted_count = await bulk_delete_transactions(db, current_user.id, data.transaction_ids)
+    return BulkDeleteResponse(deleted_count=deleted_count)
 
 
 @router.post("/bulk-categorize")
