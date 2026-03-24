@@ -9,6 +9,7 @@ class MonthlySummary(BaseModel):
     expenses: float
     savings: float
     savings_rate: float
+    payments: float = 0
 
 
 class CategorySpending(BaseModel):

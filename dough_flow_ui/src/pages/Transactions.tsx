@@ -9,12 +9,16 @@ const TYPE_LABELS: Record<TransactionType, string> = {
   income: 'Income',
   expense: 'Expense',
   transfer: 'Transfer',
+  payment: 'Payment',
+  adjustment: 'Adjustment',
 }
 
 const TYPE_COLORS: Record<TransactionType, string> = {
   income: 'bg-green-500/10 text-green-400',
   expense: 'bg-red-500/10 text-red-400',
   transfer: 'bg-blue-500/10 text-blue-400',
+  payment: 'bg-amber-500/10 text-amber-400',
+  adjustment: 'bg-gray-500/10 text-gray-400',
 }
 
 export default function Transactions() {
@@ -143,7 +147,7 @@ export default function Transactions() {
     const payload = {
       account_id: form.account_id,
       date: form.date,
-      amount: form.type === 'expense' ? -amount : amount,
+      amount: form.type === 'expense' || form.type === 'payment' ? -amount : amount,
       description: form.description,
       category_id: form.category_id || null,
       type: form.type,
@@ -312,6 +316,8 @@ export default function Transactions() {
           <option value="income">Income</option>
           <option value="expense">Expense</option>
           <option value="transfer">Transfer</option>
+          <option value="payment">Payment</option>
+          <option value="adjustment">Adjustment</option>
         </select>
         <input
           type="date"
@@ -434,12 +440,22 @@ export default function Transactions() {
                 className={`w-28 text-right text-sm font-medium font-mono ${
                   txn.type === 'transfer'
                     ? 'text-blue-400'
-                    : txn.amount >= 0
-                      ? 'text-green-400'
-                      : 'text-red-400'
+                    : txn.type === 'payment'
+                      ? 'text-amber-400'
+                      : txn.type === 'adjustment'
+                        ? 'text-gray-400'
+                        : txn.amount >= 0
+                          ? 'text-green-400'
+                          : 'text-red-400'
                 }`}
               >
-                {txn.type === 'transfer' ? '' : txn.amount >= 0 ? '+' : '-'}
+                {txn.type === 'transfer' || txn.type === 'adjustment'
+                  ? ''
+                  : txn.type === 'payment'
+                    ? '-'
+                    : txn.amount >= 0
+                      ? '+'
+                      : '-'}
                 {formatCurrency(txn.amount)}
               </span>
               <span className="w-20 flex gap-2 justify-end">
@@ -548,6 +564,8 @@ export default function Transactions() {
             <option value="expense">Expense</option>
             <option value="income">Income</option>
             <option value="transfer">Transfer</option>
+            <option value="payment">Payment</option>
+            <option value="adjustment">Adjustment</option>
           </select>
           <select
             value={form.category_id}
@@ -556,7 +574,13 @@ export default function Transactions() {
           >
             <option value="">No category</option>
             {categories
-              .filter((c) => c.type === form.type || form.type === 'transfer')
+              .filter(
+                (c) =>
+                  c.type === form.type ||
+                  form.type === 'transfer' ||
+                  form.type === 'payment' ||
+                  form.type === 'adjustment',
+              )
               .map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.icon} {c.name}
