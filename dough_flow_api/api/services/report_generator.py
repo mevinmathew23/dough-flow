@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.models.account import Account
 from api.models.category import Category
 from api.models.transaction import Transaction, TransactionType
-from api.schemas.report import CategoryComparison, CategorySpending, MonthlySummary, NetWorth
+from api.schemas.report import CategoryComparison, CategorySpending, MonthlySummary, NetWorth, TransferPair
 
 
 async def get_monthly_summary(
@@ -175,3 +175,62 @@ async def get_category_comparison(
             )
         )
     return result
+
+
+async def get_transfers(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    month: date,
+) -> list[TransferPair]:
+    """Get transfer pairs for a given month."""
+    if month.month == 12:
+        next_month = date(month.year + 1, 1, 1)
+    else:
+        next_month = date(month.year, month.month + 1, 1)
+
+    result = await db.execute(
+        select(Transaction, Account.name.label("account_name"))
+        .join(Account, Transaction.account_id == Account.id)
+        .where(
+            and_(
+                Transaction.user_id == user_id,
+                Transaction.type == TransactionType.TRANSFER,
+                Transaction.transfer_id.is_not(None),
+                Transaction.date >= month,
+                Transaction.date < next_month,
+            )
+        )
+        .order_by(Transaction.date.desc())
+    )
+
+    # Group by transfer_id to form pairs
+    pairs: dict[uuid.UUID, list[tuple[Transaction, str]]] = {}
+    for row in result.all():
+        txn = row[0]
+        account_name = row[1]
+        pairs.setdefault(txn.transfer_id, []).append((txn, account_name))
+
+    transfers = []
+    for transfer_id, txn_pair in pairs.items():
+        if len(txn_pair) != 2:
+            continue
+        # The negative amount is "from", positive is "to"
+        if float(txn_pair[0][0].amount) < 0:
+            from_txn, from_name = txn_pair[0]
+            _, to_name = txn_pair[1]
+        else:
+            from_txn, from_name = txn_pair[1]
+            _, to_name = txn_pair[0]
+
+        transfers.append(
+            TransferPair(
+                transfer_id=transfer_id,
+                date=from_txn.date.isoformat(),
+                amount=abs(float(from_txn.amount)),
+                from_account=from_name,
+                to_account=to_name,
+                description=from_txn.description,
+            )
+        )
+
+    return transfers

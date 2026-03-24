@@ -142,6 +142,8 @@ export default function CsvImport() {
   const [includeDuplicates, setIncludeDuplicates] = useState(false)
   const [saveMapping, setSaveMapping] = useState(false)
   const [institutionName, setInstitutionName] = useState('')
+  const [dateTolerance, setDateTolerance] = useState(5)
+  const [transferLinks, setTransferLinks] = useState<Record<number, boolean>>({})
 
   // Step 4 (confirm result)
   const [confirmResult, setConfirmResult] = useState<{
@@ -306,10 +308,17 @@ export default function CsvImport() {
       if (selectedAccountId) {
         formData.append('account_id', selectedAccountId)
       }
+      formData.append('date_tolerance_days', String(dateTolerance))
       const res = await api.post<CSVPreviewResponse>('/csv/preview', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
       setPreviewData(res.data)
+      // Default all transfer matches to linked
+      const links: Record<number, boolean> = {}
+      res.data.rows.forEach((row, i) => {
+        if (row.transfer_match) links[i] = true
+      })
+      setTransferLinks(links)
       setStep(3)
     } catch {
       setError('Failed to generate preview. Check your column mapping and date format.')
@@ -327,9 +336,17 @@ export default function CsvImport() {
     setLoading(true)
     setError('')
     try {
+      const rowsWithTransferLinks = rowsToImport.map((row) => {
+        const originalIdx = previewData.rows.indexOf(row)
+        const shouldLink = transferLinks[originalIdx] && row.transfer_match
+        return {
+          ...row,
+          link_transfer_id: shouldLink ? row.transfer_match!.transaction_id : null,
+        }
+      })
       const payload = {
         account_id: selectedAccountId || null,
-        rows: rowsToImport,
+        rows: rowsWithTransferLinks,
         save_mapping: saveMapping,
         institution_name: saveMapping ? institutionName : null,
         column_mapping: columnMapping,
@@ -362,6 +379,8 @@ export default function CsvImport() {
     setSaveMapping(false)
     setInstitutionName('')
     setConfirmResult(null)
+    setTransferLinks({})
+    setDateTolerance(5)
     setError('')
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
@@ -524,6 +543,8 @@ export default function CsvImport() {
 
   const renderPreviewRow = (row: CSVPreviewRow, idx: number) => {
     const isDuplicate = row.is_duplicate
+    const hasTransferMatch = !!row.transfer_match
+    const isLinked = transferLinks[idx] ?? false
     return (
       <tr
         key={idx}
@@ -553,14 +574,30 @@ export default function CsvImport() {
           {formatCurrency(row.amount)}
         </td>
         <td className="px-4 py-2 text-sm text-slate-400">{row.category_name ?? '—'}</td>
-        {isDuplicate && (
-          <td className="px-4 py-2">
+        <td className="px-4 py-2">
+          {isDuplicate && (
             <span className="text-xs bg-yellow-900/60 text-yellow-400 px-2 py-0.5 rounded-full">
               duplicate
             </span>
-          </td>
-        )}
-        {!isDuplicate && <td />}
+          )}
+          {hasTransferMatch && !isDuplicate && (
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={isLinked}
+                  onChange={(e) =>
+                    setTransferLinks((prev) => ({ ...prev, [idx]: e.target.checked }))
+                  }
+                  className="w-3.5 h-3.5 accent-blue-500"
+                />
+                <span className="text-xs bg-blue-900/60 text-blue-400 px-2 py-0.5 rounded-full whitespace-nowrap">
+                  Transfer: {row.transfer_match!.account_name} &middot; {row.transfer_match!.date}
+                </span>
+              </label>
+            </div>
+          )}
+        </td>
       </tr>
     )
   }
@@ -578,9 +615,35 @@ export default function CsvImport() {
                   {previewData.duplicate_count !== 1 ? 's' : ''}
                 </span>
               )}
+              {previewData.transfer_match_count > 0 && (
+                <span className="ml-2 text-blue-400">
+                  · {previewData.transfer_match_count} transfer match
+                  {previewData.transfer_match_count !== 1 ? 'es' : ''}
+                </span>
+              )}
             </div>
-            <div className="text-sm font-medium text-slate-200">
-              {rowsToImport.length} row{rowsToImport.length !== 1 ? 's' : ''} will be imported
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-2 text-xs text-slate-400">
+                Match transfers within
+                <input
+                  type="number"
+                  min={1}
+                  max={30}
+                  value={dateTolerance}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10)
+                    if (val >= 1 && val <= 30) {
+                      setDateTolerance(val)
+                      runPreview(columnMapping, dateFormat)
+                    }
+                  }}
+                  className="w-14 bg-navy-850 border border-navy-750 rounded px-2 py-1 text-sm text-slate-300 text-center focus:outline-none focus:border-emerald-500"
+                />
+                days
+              </label>
+              <div className="text-sm font-medium text-slate-200">
+                {rowsToImport.length} row{rowsToImport.length !== 1 ? 's' : ''} will be imported
+              </div>
             </div>
           </div>
 

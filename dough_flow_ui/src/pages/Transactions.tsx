@@ -394,13 +394,19 @@ export default function Transactions() {
               </span>
               <span className="w-20">
                 <span className={`${TYPE_COLORS[txn.type]} px-2 py-0.5 rounded-full text-xs`}>
-                  {TYPE_LABELS[txn.type]}
+                  {txn.type === 'transfer' ? '\u21C4 Transfer' : TYPE_LABELS[txn.type]}
                 </span>
               </span>
               <span
-                className={`w-28 text-right text-sm font-medium font-mono ${txn.amount >= 0 ? 'text-green-400' : 'text-red-400'}`}
+                className={`w-28 text-right text-sm font-medium font-mono ${
+                  txn.type === 'transfer'
+                    ? 'text-blue-400'
+                    : txn.amount >= 0
+                      ? 'text-green-400'
+                      : 'text-red-400'
+                }`}
               >
-                {txn.amount >= 0 ? '+' : '-'}
+                {txn.type === 'transfer' ? '' : txn.amount >= 0 ? '+' : '-'}
                 {formatCurrency(txn.amount)}
               </span>
               <span className="w-20 flex gap-2 justify-end">

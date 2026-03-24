@@ -29,3 +29,12 @@ class CategoryComparison(BaseModel):
 
 class NetWorth(BaseModel):
     net_worth: float
+
+
+class TransferPair(BaseModel):
+    transfer_id: uuid.UUID
+    date: str
+    amount: float
+    from_account: str
+    to_account: str
+    description: str

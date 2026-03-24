@@ -6,13 +6,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.database import get_db
 from api.dependencies import get_current_user
 from api.models.user import User
-from api.schemas.report import CategoryComparison, CategorySpending, MonthlySummary, NetWorth
+from api.schemas.report import CategoryComparison, CategorySpending, MonthlySummary, NetWorth, TransferPair
 from api.services.report_generator import (
     get_category_breakdown,
     get_category_comparison,
     get_income_vs_expense_trend,
     get_monthly_summary,
     get_net_worth,
+    get_transfers,
 )
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
@@ -52,6 +53,15 @@ async def category_comparison(
     current_user: User = Depends(get_current_user),
 ) -> list[CategoryComparison]:
     return await get_category_comparison(db, current_user.id, month)
+
+
+@router.get("/transfers", response_model=list[TransferPair])
+async def transfers(
+    month: date = Query(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[TransferPair]:
+    return await get_transfers(db, current_user.id, month)
 
 
 @router.get("/net-worth", response_model=NetWorth)

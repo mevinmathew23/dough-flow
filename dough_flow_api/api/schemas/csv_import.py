@@ -34,12 +34,23 @@ class ExistingTransaction(BaseModel):
     description: str
 
 
+class TransferCandidate(BaseModel):
+    transaction_id: uuid.UUID
+    account_id: uuid.UUID
+    account_name: str
+    date: str
+    description: str
+    amount: float
+
+
 class CSVPreviewRow(BaseModel):
     date: str
     description: str
     amount: float
     category_name: str | None = None
     is_duplicate: bool = False
+    transfer_match: TransferCandidate | None = None
+    link_transfer_id: uuid.UUID | None = None
 
 
 class CSVPreviewResponse(BaseModel):
@@ -47,6 +58,7 @@ class CSVPreviewResponse(BaseModel):
     rows: list[CSVPreviewRow]
     total_rows: int
     duplicate_count: int
+    transfer_match_count: int = 0
 
 
 class CSVColumnDetectionResponse(BaseModel):

@@ -19,8 +19,10 @@ from api.schemas.csv_import import (
     CSVPreviewResponse,
     CSVPreviewRow,
     ExistingTransaction,
+    TransferCandidate,
 )
 from api.services.csv_parser import CSVParseError, detect_columns, find_duplicates, parse_csv
+from api.services.transfer_matcher import find_transfer_matches
 
 router = APIRouter(prefix="/api/csv", tags=["csv_import"])
 
@@ -44,6 +46,7 @@ async def preview_csv(
     column_mapping: str = Form(...),
     date_format: str = Form("%m/%d/%Y"),
     account_id: str | None = Form(None),
+    date_tolerance_days: int = Form(5),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> CSVPreviewResponse:
@@ -70,6 +73,17 @@ async def preview_csv(
         ]
         duplicate_indices = find_duplicates(parsed, existing)
 
+    # Check for transfer matches against existing transactions in other accounts
+    transfer_matches: dict[int, TransferCandidate] = {}
+    if account_id:
+        transfer_matches = await find_transfer_matches(
+            parsed_rows=parsed,
+            target_account_id=uuid.UUID(account_id),
+            user_id=current_user.id,
+            db=db,
+            date_tolerance_days=date_tolerance_days,
+        )
+
     rows = [
         CSVPreviewRow(
             date=row.date,
@@ -77,6 +91,7 @@ async def preview_csv(
             amount=row.amount,
             category_name=row.category_name,
             is_duplicate=i in duplicate_indices,
+            transfer_match=transfer_matches.get(i),
         )
         for i, row in enumerate(parsed)
     ]
@@ -86,6 +101,7 @@ async def preview_csv(
         rows=rows,
         total_rows=len(rows),
         duplicate_count=len(duplicate_indices),
+        transfer_match_count=len(transfer_matches),
     )
 
 
@@ -103,17 +119,44 @@ async def confirm_import(
             skipped += 1
             continue
 
-        txn_type = TransactionType.EXPENSE if row.amount < 0 else TransactionType.INCOME
-        txn = Transaction(
-            account_id=data.account_id,
-            user_id=current_user.id,
-            date=date_type.fromisoformat(row.date),
-            amount=row.amount,
-            description=row.description,
-            type=txn_type,
-            source=TransactionSource.CSV_IMPORT,
-        )
-        db.add(txn)
+        if row.link_transfer_id:
+            # Link as a transfer pair
+            shared_transfer_id = uuid.uuid4()
+            txn = Transaction(
+                account_id=data.account_id,
+                user_id=current_user.id,
+                date=date_type.fromisoformat(row.date),
+                amount=row.amount,
+                description=row.description,
+                type=TransactionType.TRANSFER,
+                source=TransactionSource.CSV_IMPORT,
+                transfer_id=shared_transfer_id,
+            )
+            db.add(txn)
+
+            # Update the existing matched transaction
+            result = await db.execute(
+                select(Transaction).where(
+                    Transaction.id == row.link_transfer_id,
+                    Transaction.user_id == current_user.id,
+                )
+            )
+            existing_txn = result.scalar_one_or_none()
+            if existing_txn:
+                existing_txn.type = TransactionType.TRANSFER
+                existing_txn.transfer_id = shared_transfer_id
+        else:
+            txn_type = TransactionType.EXPENSE if row.amount < 0 else TransactionType.INCOME
+            txn = Transaction(
+                account_id=data.account_id,
+                user_id=current_user.id,
+                date=date_type.fromisoformat(row.date),
+                amount=row.amount,
+                description=row.description,
+                type=txn_type,
+                source=TransactionSource.CSV_IMPORT,
+            )
+            db.add(txn)
         imported += 1
 
     # Save mapping if requested
