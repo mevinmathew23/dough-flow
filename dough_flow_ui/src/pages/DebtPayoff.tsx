@@ -141,7 +141,7 @@ export default function DebtPayoff() {
       account_id: debt.account_id,
       principal_amount: String(debt.principal_amount),
       current_balance: String(debt.current_balance),
-      interest_rate: String(debt.interest_rate),
+      interest_rate: String(debt.interest_rate * 100),
       minimum_payment: String(debt.minimum_payment),
       compounding_frequency: debt.compounding_frequency,
       priority_order: String(debt.priority_order),
@@ -164,8 +164,8 @@ export default function DebtPayoff() {
       setFormError('Current balance must be a valid number')
       return
     }
-    if (isNaN(interestRate) || interestRate < 0) {
-      setFormError('Interest rate must be a valid number')
+    if (isNaN(interestRate) || interestRate < 0 || interestRate >= 100) {
+      setFormError('Interest rate must be between 0 and 100')
       return
     }
     if (isNaN(minimumPayment) || minimumPayment < 0) {
@@ -181,7 +181,7 @@ export default function DebtPayoff() {
       if (editing) {
         await api.patch(`/debts/${editing.id}`, {
           current_balance: currentBalance,
-          interest_rate: interestRate,
+          interest_rate: interestRate / 100,
           minimum_payment: minimumPayment,
           compounding_frequency: form.compounding_frequency,
           priority_order: priorityOrder || 0,
@@ -197,7 +197,7 @@ export default function DebtPayoff() {
           account_id: form.account_id,
           principal_amount: principalAmount,
           current_balance: currentBalance,
-          interest_rate: interestRate,
+          interest_rate: interestRate / 100,
           minimum_payment: minimumPayment,
           compounding_frequency: form.compounding_frequency,
           priority_order: priorityOrder || 1,
@@ -551,9 +551,9 @@ export default function DebtPayoff() {
           />
           <input
             type="number"
-            step="0.0001"
+            step="0.01"
             min="0"
-            placeholder="Interest rate (e.g. 0.0499 for 4.99%)"
+            placeholder="Interest rate % (e.g. 4.99)"
             value={form.interest_rate}
             onChange={(e) => setForm({ ...form, interest_rate: e.target.value })}
             className={inputClass}
