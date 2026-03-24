@@ -265,9 +265,7 @@ export default function Transactions() {
       </div>
 
       {/* Success message */}
-      {successMessage && (
-        <p className="text-green-400 text-sm mb-4">{successMessage}</p>
-      )}
+      {successMessage && <p className="text-green-400 text-sm mb-4">{successMessage}</p>}
 
       {/* Error display */}
       {error && !modalOpen && <p className="text-red-400 text-sm mb-4">{error}</p>}
@@ -473,9 +471,7 @@ export default function Transactions() {
           Are you sure you want to delete {selected.size} transaction
           {selected.size !== 1 ? 's' : ''}?
         </p>
-        <p className="text-slate-400 text-sm mb-6">
-          Total amount: {formatCurrency(selectedTotal)}
-        </p>
+        <p className="text-slate-400 text-sm mb-6">Total amount: {formatCurrency(selectedTotal)}</p>
         <div className="flex gap-3 justify-end">
           <button
             onClick={() => setDeleteConfirmOpen(false)}
