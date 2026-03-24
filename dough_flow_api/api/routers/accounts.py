@@ -6,7 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.database import get_db
 from api.dependencies import get_current_user
-from api.models.account import Account
+from api.models.account import Account, AccountType
+from api.models.debt import CompoundingFrequency, Debt
 from api.models.user import User
 from api.schemas.account import AccountCreate, AccountResponse, AccountUpdate
 
@@ -19,10 +20,30 @@ async def create_account(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Account:
-    account = Account(**data.model_dump(), user_id=current_user.id)
+    account_data = data.model_dump(exclude={"minimum_payment", "compounding_frequency"})
+    account = Account(**account_data, user_id=current_user.id)
     db.add(account)
     await db.commit()
     await db.refresh(account)
+
+    if account.type in (AccountType.CREDIT, AccountType.LOAN):
+        debt = Debt(
+            account_id=account.id,
+            user_id=current_user.id,
+            principal_amount=abs(data.balance) if data.balance else 0,
+            current_balance=abs(data.balance) if data.balance else 0,
+            interest_rate=data.interest_rate or 0,
+            minimum_payment=data.minimum_payment or 0,
+            compounding_frequency=(
+                CompoundingFrequency(data.compounding_frequency)
+                if data.compounding_frequency
+                else CompoundingFrequency.MONTHLY
+            ),
+        )
+        db.add(debt)
+        await db.commit()
+        await db.refresh(account)
+
     return account
 
 

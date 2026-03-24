@@ -2,9 +2,31 @@ import { useEffect, useState } from 'react'
 import api from '../api/client'
 import Modal from '../components/Modal'
 import { useCurrency } from '../contexts/CurrencyContext'
-import { Account, AccountType } from '../types'
+import { Account, AccountType, CompoundingFrequency } from '../types'
 
 const ACCOUNT_TYPES: AccountType[] = ['checking', 'savings', 'credit', 'investment', 'loan']
+
+const COMPOUNDING_OPTIONS: CompoundingFrequency[] = [
+  'daily',
+  'weekly',
+  'biweekly',
+  'monthly',
+  'bimonthly',
+  'quarterly',
+  'semiannually',
+  'annually',
+]
+
+const COMPOUNDING_LABELS: Record<CompoundingFrequency, string> = {
+  daily: 'Daily',
+  weekly: 'Weekly',
+  biweekly: 'Biweekly',
+  monthly: 'Monthly',
+  bimonthly: 'Bimonthly',
+  quarterly: 'Quarterly',
+  semiannually: 'Semiannually',
+  annually: 'Annually',
+}
 
 const TYPE_LABELS: Record<AccountType, string> = {
   checking: 'Checking',
@@ -22,6 +44,14 @@ const TYPE_COLORS: Record<AccountType, string> = {
   loan: 'bg-orange-500/10 text-orange-400',
 }
 
+function isDebtType(type: AccountType): boolean {
+  return type === 'credit' || type === 'loan'
+}
+
+function formatInterestDisplay(rate: number): string {
+  return (rate * 100).toFixed(1)
+}
+
 export default function Accounts() {
   const { formatCurrency } = useCurrency()
   const [accounts, setAccounts] = useState<Account[]>([])
@@ -34,6 +64,8 @@ export default function Accounts() {
     institution: '',
     balance: '',
     interest_rate: '',
+    minimumPayment: '',
+    compoundingFrequency: 'monthly' as CompoundingFrequency,
   })
   const [error, setError] = useState('')
 
@@ -55,7 +87,15 @@ export default function Accounts() {
 
   const openCreate = () => {
     setEditing(null)
-    setForm({ name: '', type: 'checking', institution: '', balance: '', interest_rate: '' })
+    setForm({
+      name: '',
+      type: 'checking',
+      institution: '',
+      balance: '',
+      interest_rate: '',
+      minimumPayment: '',
+      compoundingFrequency: 'monthly',
+    })
     setError('')
     setModalOpen(true)
   }
@@ -67,7 +107,9 @@ export default function Accounts() {
       type: account.type,
       institution: account.institution,
       balance: String(account.balance),
-      interest_rate: account.interest_rate != null ? String(account.interest_rate) : '',
+      interest_rate: account.interest_rate != null ? String(account.interest_rate * 100) : '',
+      minimumPayment: '',
+      compoundingFrequency: 'monthly',
     })
     setError('')
     setModalOpen(true)
@@ -76,23 +118,34 @@ export default function Accounts() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    const payload = {
+
+    const interestRateDecimal = form.interest_rate ? parseFloat(form.interest_rate) / 100 : null
+
+    const basePayload = {
       name: form.name,
       type: form.type,
       institution: form.institution,
       balance: parseFloat(form.balance) || 0,
-      interest_rate: form.interest_rate ? parseFloat(form.interest_rate) : null,
+      interest_rate: interestRateDecimal,
     }
+
     try {
       if (editing) {
         await api.patch(`/accounts/${editing.id}`, {
-          name: payload.name,
-          institution: payload.institution,
-          balance: payload.balance,
-          interest_rate: payload.interest_rate,
+          name: basePayload.name,
+          institution: basePayload.institution,
+          balance: basePayload.balance,
+          interest_rate: basePayload.interest_rate,
         })
       } else {
-        await api.post('/accounts', payload)
+        const createPayload: Record<string, unknown> = { ...basePayload }
+        if (isDebtType(form.type)) {
+          if (form.minimumPayment) {
+            createPayload.minimum_payment = parseFloat(form.minimumPayment)
+          }
+          createPayload.compounding_frequency = form.compoundingFrequency
+        }
+        await api.post('/accounts', createPayload)
       }
       setModalOpen(false)
       await fetchAccounts()
@@ -124,6 +177,9 @@ export default function Accounts() {
 
   const inputClass =
     'bg-navy-850 border border-navy-750 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-emerald-500 w-full'
+
+  const interestLabel = isDebtType(form.type) ? 'APR (Interest Charged)' : 'APY (Interest Earned)'
+  const interestColor = isDebtType(form.type) ? 'text-red-400' : 'text-green-400'
 
   return (
     <div>
@@ -165,7 +221,17 @@ export default function Accounts() {
                     <div className="flex items-center gap-3">
                       <div>
                         <div className="text-sm font-medium">{account.name}</div>
-                        <div className="text-xs text-slate-400">{account.institution}</div>
+                        <div className="text-xs text-slate-400">
+                          {account.institution}
+                          {account.interest_rate != null && account.interest_rate > 0 && (
+                            <span
+                              className={`ml-2 ${isDebtType(account.type) ? 'text-red-400' : 'text-green-400'}`}
+                            >
+                              {formatInterestDisplay(account.interest_rate)}%{' '}
+                              {isDebtType(account.type) ? 'APR' : 'APY'}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <span
                         className={`${TYPE_COLORS[account.type]} px-2 py-0.5 rounded-full text-xs`}
@@ -245,14 +311,57 @@ export default function Accounts() {
             className={inputClass}
             required
           />
-          <input
-            type="number"
-            step="0.01"
-            placeholder="Interest rate (optional)"
-            value={form.interest_rate}
-            onChange={(e) => setForm({ ...form, interest_rate: e.target.value })}
-            className={inputClass}
-          />
+          <div>
+            <label className={`text-xs font-medium mb-1 block ${interestColor}`}>
+              {interestLabel}
+            </label>
+            <div className="relative">
+              <input
+                type="number"
+                step="0.01"
+                placeholder="e.g. 4.9"
+                value={form.interest_rate}
+                onChange={(e) => setForm({ ...form, interest_rate: e.target.value })}
+                className={`${inputClass} pr-8`}
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
+                %
+              </span>
+            </div>
+          </div>
+          {!editing && isDebtType(form.type) && (
+            <>
+              <input
+                type="number"
+                step="0.01"
+                placeholder="Minimum payment (optional)"
+                value={form.minimumPayment}
+                onChange={(e) => setForm({ ...form, minimumPayment: e.target.value })}
+                className={inputClass}
+              />
+              <div>
+                <label className="text-xs font-medium mb-1 block text-slate-400">
+                  Compounding Frequency
+                </label>
+                <select
+                  value={form.compoundingFrequency}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      compoundingFrequency: e.target.value as CompoundingFrequency,
+                    })
+                  }
+                  className={inputClass}
+                >
+                  {COMPOUNDING_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {COMPOUNDING_LABELS[opt]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
           <button
             type="submit"
             className="bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"

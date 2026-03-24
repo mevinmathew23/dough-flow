@@ -1,4 +1,10 @@
+import uuid
+
 from httpx import AsyncClient
+from sqlalchemy import select
+
+from api.models.debt import Debt
+from tests.conftest import TestingSessionLocal
 
 
 async def test_create_account(auth_client: AsyncClient):
@@ -65,3 +71,92 @@ async def test_delete_account(auth_client: AsyncClient):
 async def test_unauthorized_access(client: AsyncClient):
     response = await client.get("/api/accounts")
     assert response.status_code == 401
+
+
+async def test_create_credit_account_auto_creates_debt(auth_client: AsyncClient):
+    response = await auth_client.post(
+        "/api/accounts",
+        json={
+            "name": "Visa Card",
+            "type": "credit",
+            "institution": "Chase",
+            "balance": -1500,
+            "interest_rate": 0.199,
+            "minimum_payment": 25,
+        },
+    )
+    assert response.status_code == 201
+    account_id = response.json()["id"]
+
+    async with TestingSessionLocal() as session:
+        result = await session.execute(select(Debt).where(Debt.account_id == uuid.UUID(account_id)))
+        debt = result.scalar_one_or_none()
+        assert debt is not None
+        assert float(debt.principal_amount) == 1500
+        assert float(debt.interest_rate) == 0.199
+        assert float(debt.minimum_payment) == 25
+
+
+async def test_create_loan_account_auto_creates_debt(auth_client: AsyncClient):
+    response = await auth_client.post(
+        "/api/accounts",
+        json={
+            "name": "Car Loan",
+            "type": "loan",
+            "institution": "Bank of America",
+            "balance": -20000,
+            "interest_rate": 0.049,
+        },
+    )
+    assert response.status_code == 201
+    account_id = response.json()["id"]
+
+    async with TestingSessionLocal() as session:
+        result = await session.execute(select(Debt).where(Debt.account_id == uuid.UUID(account_id)))
+        debt = result.scalar_one_or_none()
+        assert debt is not None
+        assert float(debt.principal_amount) == 20000
+        assert float(debt.interest_rate) == 0.049
+
+
+async def test_create_checking_account_no_debt(auth_client: AsyncClient):
+    response = await auth_client.post(
+        "/api/accounts",
+        json={
+            "name": "Main Checking",
+            "type": "checking",
+            "institution": "Wells Fargo",
+            "balance": 5000,
+        },
+    )
+    assert response.status_code == 201
+    account_id = response.json()["id"]
+
+    async with TestingSessionLocal() as session:
+        result = await session.execute(select(Debt).where(Debt.account_id == uuid.UUID(account_id)))
+        debt = result.scalar_one_or_none()
+        assert debt is None
+
+
+async def test_create_credit_with_custom_debt_fields(auth_client: AsyncClient):
+    response = await auth_client.post(
+        "/api/accounts",
+        json={
+            "name": "Amex Gold",
+            "type": "credit",
+            "institution": "Amex",
+            "balance": -3000,
+            "interest_rate": 0.249,
+            "minimum_payment": 50,
+            "compounding_frequency": "daily",
+        },
+    )
+    assert response.status_code == 201
+    account_id = response.json()["id"]
+
+    async with TestingSessionLocal() as session:
+        result = await session.execute(select(Debt).where(Debt.account_id == uuid.UUID(account_id)))
+        debt = result.scalar_one_or_none()
+        assert debt is not None
+        assert float(debt.minimum_payment) == 50
+        assert debt.compounding_frequency.value == "daily"

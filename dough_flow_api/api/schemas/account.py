@@ -12,6 +12,8 @@ class AccountCreate(BaseModel):
     institution: str
     balance: float = 0
     interest_rate: float | None = None
+    minimum_payment: float | None = None
+    compounding_frequency: str | None = None
 
 
 class AccountUpdate(BaseModel):
