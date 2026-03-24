@@ -152,12 +152,23 @@ export interface CSVMapping {
   created_at: string
 }
 
+export interface TransferCandidate {
+  transaction_id: string
+  account_id: string
+  account_name: string
+  date: string
+  description: string
+  amount: number
+}
+
 export interface CSVPreviewRow {
   date: string
   description: string
   amount: number
   category_name: string | null
   is_duplicate: boolean
+  transfer_match: TransferCandidate | null
+  link_transfer_id: string | null
 }
 
 export interface CSVPreviewResponse {
@@ -165,6 +176,7 @@ export interface CSVPreviewResponse {
   rows: CSVPreviewRow[]
   total_rows: number
   duplicate_count: number
+  transfer_match_count: number
 }
 
 export interface MonthlySummary {
