@@ -19,8 +19,8 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     # PostgreSQL requires explicit ALTER TYPE to add new enum values.
     # SQLite stores enums as strings, so no migration action is needed there.
-    op.execute("ALTER TYPE transactiontype ADD VALUE IF NOT EXISTS 'payment'")
-    op.execute("ALTER TYPE transactiontype ADD VALUE IF NOT EXISTS 'adjustment'")
+    op.execute("ALTER TYPE transactiontype ADD VALUE IF NOT EXISTS 'PAYMENT'")
+    op.execute("ALTER TYPE transactiontype ADD VALUE IF NOT EXISTS 'ADJUSTMENT'")
 
 
 def downgrade() -> None:
