@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import api from '../api/client'
 import Modal from '../components/Modal'
+import MoneyInput from '../components/MoneyInput'
 import { useCurrency } from '../contexts/CurrencyContext'
 import { Account, AccountType, CompoundingFrequency } from '../types'
 
@@ -302,14 +303,13 @@ export default function Accounts() {
             className={inputClass}
             required
           />
-          <input
-            type="number"
-            step="0.01"
+          <MoneyInput
             placeholder="Balance"
             value={form.balance}
-            onChange={(e) => setForm({ ...form, balance: e.target.value })}
+            onChange={(val) => setForm({ ...form, balance: val })}
             className={inputClass}
             required
+            allowNegative
           />
           <div>
             <label className={`text-xs font-medium mb-1 block ${interestColor}`}>
@@ -331,12 +331,10 @@ export default function Accounts() {
           </div>
           {!editing && isDebtType(form.type) && (
             <>
-              <input
-                type="number"
-                step="0.01"
+              <MoneyInput
                 placeholder="Minimum payment (optional)"
                 value={form.minimumPayment}
-                onChange={(e) => setForm({ ...form, minimumPayment: e.target.value })}
+                onChange={(val) => setForm({ ...form, minimumPayment: val })}
                 className={inputClass}
               />
               <div>
