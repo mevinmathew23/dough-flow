@@ -29,7 +29,7 @@ export interface Category {
   is_default: boolean
 }
 
-export type TransactionType = 'income' | 'expense' | 'transfer'
+export type TransactionType = 'income' | 'expense' | 'transfer' | 'payment' | 'adjustment'
 export type TransactionSource = 'manual' | 'csv_import' | 'plaid'
 
 export interface Transaction {
@@ -185,6 +185,7 @@ export interface MonthlySummary {
   expenses: number
   savings: number
   savings_rate: number
+  payments?: number
 }
 
 export interface CategorySpending {

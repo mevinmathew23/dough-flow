@@ -47,6 +47,19 @@ async def get_monthly_summary(
     )
     expenses = float(expense_result.scalar_one())
 
+    # Total payments (debt reductions, stored as negative)
+    payment_result = await db.execute(
+        select(func.coalesce(func.sum(func.abs(Transaction.amount)), 0)).where(
+            and_(
+                Transaction.user_id == user_id,
+                Transaction.type == TransactionType.PAYMENT,
+                Transaction.date >= month,
+                Transaction.date < next_month,
+            )
+        )
+    )
+    payments = float(payment_result.scalar_one())
+
     savings = income - expenses
     savings_rate = round((savings / income) * 100, 1) if income > 0 else 0.0
 
@@ -56,6 +69,7 @@ async def get_monthly_summary(
         expenses=round(expenses, 2),
         savings=round(savings, 2),
         savings_rate=savings_rate,
+        payments=round(payments, 2),
     )
 
 
