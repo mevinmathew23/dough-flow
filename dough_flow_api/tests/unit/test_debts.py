@@ -111,19 +111,19 @@ async def test_delete_debt(auth_client: AsyncClient):
 async def test_payoff_projection(auth_client: AsyncClient):
     acc = await auth_client.post(
         "/api/accounts",
-        json={"name": "Credit Card", "type": "credit", "institution": "Chase"},
-    )
-    await auth_client.post(
-        "/api/debts",
         json={
-            "account_id": acc.json()["id"],
-            "principal_amount": 5000,
-            "current_balance": 5000,
+            "name": "Credit Card",
+            "type": "credit",
+            "institution": "Chase",
+            "balance": 5000,
             "interest_rate": 0.20,
             "minimum_payment": 150,
-            "priority_order": 1,
         },
     )
+    # Auto-created debt from account creation; update priority_order
+    debts = await auth_client.get("/api/debts")
+    debt_id = debts.json()[0]["id"]
+    await auth_client.patch(f"/api/debts/{debt_id}", json={"priority_order": 1})
 
     response = await auth_client.get("/api/debts/payoff?extra_monthly=100")
     assert response.status_code == 200
@@ -142,20 +142,21 @@ async def test_payoff_with_daily_compounding(auth_client: AsyncClient):
     """Daily compounding should result in more total interest than monthly."""
     acc = await auth_client.post(
         "/api/accounts",
-        json={"name": "Loan", "type": "loan", "institution": "Bank"},
-    )
-    # Create debt with daily compounding
-    await auth_client.post(
-        "/api/debts",
         json={
-            "account_id": acc.json()["id"],
-            "principal_amount": 10000,
-            "current_balance": 10000,
+            "name": "Loan",
+            "type": "loan",
+            "institution": "Bank",
+            "balance": 10000,
             "interest_rate": 0.10,
             "minimum_payment": 300,
             "compounding_frequency": "daily",
         },
     )
+    # Auto-created debt from account creation with daily compounding
+    # Update principal to match
+    debts = await auth_client.get("/api/debts")
+    debt_id = debts.json()[0]["id"]
+    await auth_client.patch(f"/api/debts/{debt_id}", json={"principal_amount": 10000})
 
     response = await auth_client.get("/api/debts/payoff")
     assert response.status_code == 200
@@ -174,18 +175,19 @@ async def test_payoff_with_daily_compounding(auth_client: AsyncClient):
 async def test_growth_projection(auth_client: AsyncClient):
     acc = await auth_client.post(
         "/api/accounts",
-        json={"name": "Credit Card", "type": "credit", "institution": "Chase"},
-    )
-    await auth_client.post(
-        "/api/debts",
         json={
-            "account_id": acc.json()["id"],
-            "principal_amount": 5000,
-            "current_balance": 5000,
+            "name": "Credit Card",
+            "type": "credit",
+            "institution": "Chase",
+            "balance": 5000,
             "interest_rate": 0.20,
             "minimum_payment": 150,
         },
     )
+    # Debt auto-created; update principal to match
+    debts = await auth_client.get("/api/debts")
+    debt_id = debts.json()[0]["id"]
+    await auth_client.patch(f"/api/debts/{debt_id}", json={"principal_amount": 5000})
 
     response = await auth_client.get("/api/debts/growth?months=12")
     assert response.status_code == 200
@@ -206,39 +208,32 @@ async def test_growth_projection(auth_client: AsyncClient):
 async def test_grouped_summary(auth_client: AsyncClient):
     acc = await auth_client.post(
         "/api/accounts",
-        json={"name": "Credit Card", "type": "credit", "institution": "Chase"},
-    )
-    acc2 = await auth_client.post(
-        "/api/accounts",
-        json={"name": "Student Loan", "type": "loan", "institution": "Bank"},
-    )
-
-    await auth_client.post(
-        "/api/debts",
         json={
-            "account_id": acc.json()["id"],
-            "principal_amount": 5000,
-            "current_balance": 5000,
+            "name": "Credit Card",
+            "type": "credit",
+            "institution": "Chase",
+            "balance": 5000,
             "interest_rate": 0.20,
             "minimum_payment": 150,
         },
     )
-    await auth_client.post(
-        "/api/debts",
+    acc2 = await auth_client.post(
+        "/api/accounts",
         json={
-            "account_id": acc2.json()["id"],
-            "principal_amount": 15000,
-            "current_balance": 10000,
+            "name": "Student Loan",
+            "type": "loan",
+            "institution": "Bank",
+            "balance": 10000,
             "interest_rate": 0.05,
             "minimum_payment": 200,
         },
     )
-
+    # Both debts auto-created from account creation
     response = await auth_client.get("/api/debts/grouped")
     assert response.status_code == 200
     data = response.json()
     assert data["debt_count"] == 2
-    assert data["total_principal"] == 20000
+    assert data["total_principal"] == 15000
     assert data["total_current_balance"] == 15000
     assert data["total_minimum_payment"] == 350
     # Weighted rate: (5000*0.20 + 10000*0.05) / 15000 = 1500/15000 = 0.1
