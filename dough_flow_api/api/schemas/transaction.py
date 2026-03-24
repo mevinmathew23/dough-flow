@@ -43,3 +43,11 @@ class TransactionResponse(BaseModel):
 class BulkCategorizeRequest(BaseModel):
     transaction_ids: list[uuid.UUID]
     category_id: uuid.UUID
+
+
+class BulkDeleteRequest(BaseModel):
+    transaction_ids: list[uuid.UUID]
+
+
+class BulkDeleteResponse(BaseModel):
+    deleted_count: int

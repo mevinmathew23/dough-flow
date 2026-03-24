@@ -300,6 +300,77 @@ async def test_bulk_categorize(auth_client: AsyncClient):
     assert data["updated_count"] == 2
 
 
+async def test_bulk_delete_transactions(auth_client: AsyncClient):
+    acc = await auth_client.post(
+        "/api/accounts",
+        json={"name": "Checking", "type": "checking", "institution": "Chase"},
+    )
+    account_id = acc.json()["id"]
+
+    txn1 = await auth_client.post(
+        "/api/transactions",
+        json={
+            "account_id": account_id,
+            "date": "2026-03-01",
+            "amount": -50,
+            "description": "Delete A",
+            "type": "expense",
+        },
+    )
+    txn2 = await auth_client.post(
+        "/api/transactions",
+        json={
+            "account_id": account_id,
+            "date": "2026-03-02",
+            "amount": -30,
+            "description": "Delete B",
+            "type": "expense",
+        },
+    )
+    txn3 = await auth_client.post(
+        "/api/transactions",
+        json={
+            "account_id": account_id,
+            "date": "2026-03-03",
+            "amount": -20,
+            "description": "Keep C",
+            "type": "expense",
+        },
+    )
+
+    response = await auth_client.post(
+        "/api/transactions/bulk-delete",
+        json={"transaction_ids": [txn1.json()["id"], txn2.json()["id"]]},
+    )
+    assert response.status_code == 200
+    assert response.json()["deleted_count"] == 2
+
+    # Verify the remaining transaction still exists
+    remaining = await auth_client.get("/api/transactions")
+    assert len(remaining.json()) == 1
+    assert remaining.json()[0]["id"] == txn3.json()["id"]
+
+
+async def test_bulk_delete_empty_list(auth_client: AsyncClient):
+    response = await auth_client.post(
+        "/api/transactions/bulk-delete",
+        json={"transaction_ids": []},
+    )
+    assert response.status_code == 200
+    assert response.json()["deleted_count"] == 0
+
+
+async def test_bulk_delete_nonexistent_ids(auth_client: AsyncClient):
+    import uuid
+
+    response = await auth_client.post(
+        "/api/transactions/bulk-delete",
+        json={"transaction_ids": [str(uuid.uuid4()), str(uuid.uuid4())]},
+    )
+    assert response.status_code == 200
+    assert response.json()["deleted_count"] == 0
+
+
 async def test_unauthorized_transactions(client: AsyncClient):
     response = await client.get("/api/transactions")
     assert response.status_code == 401
