@@ -40,10 +40,11 @@ async def get_group(db: AsyncSession, user_id: uuid.UUID, group_id: uuid.UUID) -
 
 
 async def update_group(
-    db: AsyncSession, user_id: uuid.UUID, group_id: uuid.UUID, name: str,
+    db: AsyncSession, user_id: uuid.UUID, group_id: uuid.UUID, name: str | None,
 ) -> DebtGroup:
     group = await get_group(db, user_id, group_id)
-    group.name = name
+    if name is not None:
+        group.name = name
     await db.commit()
     return await get_group(db, user_id, group_id)
 
