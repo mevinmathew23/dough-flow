@@ -41,7 +41,10 @@ async def create_debt_group(
 ) -> DebtGroupResponse:
     group = await create_group(db, current_user.id, data.name)
     return DebtGroupResponse(
-        id=group.id, name=group.name, debt_ids=[], created_at=group.created_at,
+        id=group.id,
+        name=group.name,
+        debt_ids=[],
+        created_at=group.created_at,
     )
 
 

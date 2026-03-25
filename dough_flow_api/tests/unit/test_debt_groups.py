@@ -4,11 +4,18 @@ from httpx import AsyncClient
 
 
 async def _create_debt_account(auth_client: AsyncClient) -> str:
-    res = await auth_client.post("/api/accounts", json={
-        "name": "Credit Card", "type": "credit", "institution": "Bank",
-        "balance": -5000, "interest_rate": 0.20, "minimum_payment": 100,
-        "compounding_frequency": "monthly",
-    })
+    res = await auth_client.post(
+        "/api/accounts",
+        json={
+            "name": "Credit Card",
+            "type": "credit",
+            "institution": "Bank",
+            "balance": -5000,
+            "interest_rate": 0.20,
+            "minimum_payment": 100,
+            "compounding_frequency": "monthly",
+        },
+    )
     return res.json()["id"]
 
 

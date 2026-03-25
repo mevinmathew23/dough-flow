@@ -242,16 +242,30 @@ async def test_grouped_summary(auth_client: AsyncClient):
 
 async def test_payoff_with_debt_ids_filter(auth_client: AsyncClient):
     # Create two debt accounts
-    await auth_client.post("/api/accounts", json={
-        "name": "Card 1", "type": "credit", "institution": "Bank",
-        "balance": -5000, "interest_rate": 0.20, "minimum_payment": 100,
-        "compounding_frequency": "monthly",
-    })
-    await auth_client.post("/api/accounts", json={
-        "name": "Card 2", "type": "credit", "institution": "Bank",
-        "balance": -10000, "interest_rate": 0.05, "minimum_payment": 200,
-        "compounding_frequency": "monthly",
-    })
+    await auth_client.post(
+        "/api/accounts",
+        json={
+            "name": "Card 1",
+            "type": "credit",
+            "institution": "Bank",
+            "balance": -5000,
+            "interest_rate": 0.20,
+            "minimum_payment": 100,
+            "compounding_frequency": "monthly",
+        },
+    )
+    await auth_client.post(
+        "/api/accounts",
+        json={
+            "name": "Card 2",
+            "type": "credit",
+            "institution": "Bank",
+            "balance": -10000,
+            "interest_rate": 0.05,
+            "minimum_payment": 200,
+            "compounding_frequency": "monthly",
+        },
+    )
 
     # Get the debt IDs
     debts_res = await auth_client.get("/api/debts")
@@ -268,16 +282,30 @@ async def test_payoff_with_debt_ids_filter(auth_client: AsyncClient):
 
 
 async def test_payoff_without_filter_returns_all(auth_client: AsyncClient):
-    await auth_client.post("/api/accounts", json={
-        "name": "Card 1", "type": "credit", "institution": "Bank",
-        "balance": -5000, "interest_rate": 0.20, "minimum_payment": 100,
-        "compounding_frequency": "monthly",
-    })
-    await auth_client.post("/api/accounts", json={
-        "name": "Card 2", "type": "credit", "institution": "Bank",
-        "balance": -10000, "interest_rate": 0.05, "minimum_payment": 200,
-        "compounding_frequency": "monthly",
-    })
+    await auth_client.post(
+        "/api/accounts",
+        json={
+            "name": "Card 1",
+            "type": "credit",
+            "institution": "Bank",
+            "balance": -5000,
+            "interest_rate": 0.20,
+            "minimum_payment": 100,
+            "compounding_frequency": "monthly",
+        },
+    )
+    await auth_client.post(
+        "/api/accounts",
+        json={
+            "name": "Card 2",
+            "type": "credit",
+            "institution": "Bank",
+            "balance": -10000,
+            "interest_rate": 0.05,
+            "minimum_payment": 200,
+            "compounding_frequency": "monthly",
+        },
+    )
 
     response = await auth_client.get("/api/debts/payoff")
     assert response.status_code == 200

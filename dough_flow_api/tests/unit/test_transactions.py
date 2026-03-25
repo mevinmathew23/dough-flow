@@ -372,26 +372,47 @@ async def test_bulk_delete_nonexistent_ids(auth_client: AsyncClient):
 
 
 async def test_bulk_update_type(auth_client: AsyncClient):
-    acct = await auth_client.post("/api/accounts", json={
-        "name": "Test", "type": "checking", "institution": "Bank", "balance": 1000,
-    })
+    acct = await auth_client.post(
+        "/api/accounts",
+        json={
+            "name": "Test",
+            "type": "checking",
+            "institution": "Bank",
+            "balance": 1000,
+        },
+    )
     account_id = acct.json()["id"]
 
-    txn1 = await auth_client.post("/api/transactions", json={
-        "account_id": account_id, "date": "2026-01-15",
-        "amount": -50.00, "description": "Expense 1", "type": "expense",
-    })
-    txn2 = await auth_client.post("/api/transactions", json={
-        "account_id": account_id, "date": "2026-01-16",
-        "amount": -75.00, "description": "Expense 2", "type": "expense",
-    })
+    txn1 = await auth_client.post(
+        "/api/transactions",
+        json={
+            "account_id": account_id,
+            "date": "2026-01-15",
+            "amount": -50.00,
+            "description": "Expense 1",
+            "type": "expense",
+        },
+    )
+    txn2 = await auth_client.post(
+        "/api/transactions",
+        json={
+            "account_id": account_id,
+            "date": "2026-01-16",
+            "amount": -75.00,
+            "description": "Expense 2",
+            "type": "expense",
+        },
+    )
     txn1_id = txn1.json()["id"]
     txn2_id = txn2.json()["id"]
 
-    response = await auth_client.post("/api/transactions/bulk-update-type", json={
-        "transaction_ids": [txn1_id, txn2_id],
-        "type": "income",
-    })
+    response = await auth_client.post(
+        "/api/transactions/bulk-update-type",
+        json={
+            "transaction_ids": [txn1_id, txn2_id],
+            "type": "income",
+        },
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["updated_count"] == 2
@@ -405,21 +426,36 @@ async def test_bulk_update_type(auth_client: AsyncClient):
 
 
 async def test_bulk_update_type_to_expense_flips_sign(auth_client: AsyncClient):
-    acct = await auth_client.post("/api/accounts", json={
-        "name": "Test", "type": "checking", "institution": "Bank", "balance": 1000,
-    })
+    acct = await auth_client.post(
+        "/api/accounts",
+        json={
+            "name": "Test",
+            "type": "checking",
+            "institution": "Bank",
+            "balance": 1000,
+        },
+    )
     account_id = acct.json()["id"]
 
-    txn = await auth_client.post("/api/transactions", json={
-        "account_id": account_id, "date": "2026-01-15",
-        "amount": 100.00, "description": "Income", "type": "income",
-    })
+    txn = await auth_client.post(
+        "/api/transactions",
+        json={
+            "account_id": account_id,
+            "date": "2026-01-15",
+            "amount": 100.00,
+            "description": "Income",
+            "type": "income",
+        },
+    )
     txn_id = txn.json()["id"]
 
-    response = await auth_client.post("/api/transactions/bulk-update-type", json={
-        "transaction_ids": [txn_id],
-        "type": "expense",
-    })
+    response = await auth_client.post(
+        "/api/transactions/bulk-update-type",
+        json={
+            "transaction_ids": [txn_id],
+            "type": "expense",
+        },
+    )
     assert response.status_code == 200
     assert response.json()["updated_count"] == 1
 
@@ -429,10 +465,13 @@ async def test_bulk_update_type_to_expense_flips_sign(auth_client: AsyncClient):
 
 
 async def test_bulk_update_type_empty_list(auth_client: AsyncClient):
-    response = await auth_client.post("/api/transactions/bulk-update-type", json={
-        "transaction_ids": [],
-        "type": "income",
-    })
+    response = await auth_client.post(
+        "/api/transactions/bulk-update-type",
+        json={
+            "transaction_ids": [],
+            "type": "income",
+        },
+    )
     assert response.status_code == 422
 
 
