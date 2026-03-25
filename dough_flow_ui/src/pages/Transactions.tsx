@@ -56,6 +56,7 @@ export default function Transactions() {
   const [bulkCategoryId, setBulkCategoryId] = useState('')
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
+  const [bulkTypeId, setBulkTypeId] = useState<TransactionType | ''>('')
 
   const fetchTransactions = async () => {
     const params = new URLSearchParams()
@@ -121,6 +122,20 @@ export default function Transactions() {
     setFormError('')
     setModalOpen(true)
   }
+
+  useEffect(() => {
+    if (editing) return
+    if (!form.account_id) return
+    const account = accounts.find((a) => a.id === form.account_id)
+    if (account?.type === 'credit') {
+      const paymentCategory = categories.find((c) => c.name.toLowerCase() === 'payment')
+      setForm((prev) => ({
+        ...prev,
+        type: 'payment',
+        category_id: paymentCategory?.id ?? prev.category_id,
+      }))
+    }
+  }, [form.account_id, editing, accounts, categories])
 
   const openEdit = (txn: Transaction) => {
     setEditing(txn)
@@ -228,6 +243,26 @@ export default function Transactions() {
     } catch {
       setError('Failed to delete transactions')
       setDeleteConfirmOpen(false)
+    }
+  }
+
+  const handleBulkUpdateType = async () => {
+    if (selected.size === 0 || !bulkTypeId) return
+    try {
+      const res = await api.post('/transactions/bulk-update-type', {
+        transaction_ids: Array.from(selected),
+        type: bulkTypeId,
+      })
+      const count = res.data.updated_count as number
+      setSelected(new Set())
+      setBulkTypeId('')
+      setSuccessMessage(
+        `Successfully updated ${count} transaction${count !== 1 ? 's' : ''} to ${TYPE_LABELS[bulkTypeId]}`,
+      )
+      setTimeout(() => setSuccessMessage(''), 4000)
+      await fetchTransactions()
+    } catch {
+      setError('Failed to update transaction type')
     }
   }
 
@@ -343,7 +378,7 @@ export default function Transactions() {
         )}
       </div>
 
-      {/* Bulk categorize bar */}
+      {/* Bulk actions bar */}
       {selected.size > 0 && (
         <div className="flex items-center gap-3 mb-4 bg-navy-900 border border-navy-800 rounded-lg px-4 py-2">
           <span className="text-sm text-slate-300">{selected.size} selected</span>
@@ -366,6 +401,26 @@ export default function Transactions() {
           >
             Apply
           </button>
+          <div className="w-px h-6 bg-navy-700" />
+          <select
+            value={bulkTypeId}
+            onChange={(e) => setBulkTypeId(e.target.value as TransactionType | '')}
+            className={selectClass}
+          >
+            <option value="">Change type...</option>
+            <option value="income">Income</option>
+            <option value="expense">Expense</option>
+            <option value="payment">Payment</option>
+            <option value="adjustment">Adjustment</option>
+          </select>
+          <button
+            onClick={handleBulkUpdateType}
+            disabled={!bulkTypeId}
+            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-3 py-1 rounded-lg text-sm transition-colors cursor-pointer"
+          >
+            Apply
+          </button>
+          <div className="w-px h-6 bg-navy-700" />
           <button
             onClick={() => setDeleteConfirmOpen(true)}
             className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-lg text-sm transition-colors cursor-pointer"

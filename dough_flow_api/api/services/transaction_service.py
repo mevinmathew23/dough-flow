@@ -72,3 +72,27 @@ async def bulk_delete_transactions(
         await db.delete(txn)
     await db.commit()
     return len(transactions)
+
+
+async def bulk_update_type(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    transaction_ids: list[uuid.UUID],
+    new_type: TransactionType,
+) -> int:
+    """Update type on multiple transactions and fix amount signs. Returns count updated."""
+    result = await db.execute(
+        select(Transaction).where(
+            Transaction.id.in_(transaction_ids),
+            Transaction.user_id == user_id,
+        )
+    )
+    transactions = list(result.scalars().all())
+    for txn in transactions:
+        txn.type = new_type
+        if new_type in (TransactionType.EXPENSE, TransactionType.PAYMENT):
+            txn.amount = -abs(float(txn.amount))
+        else:
+            txn.amount = abs(float(txn.amount))
+    await db.commit()
+    return len(transactions)

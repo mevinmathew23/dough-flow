@@ -53,8 +53,13 @@ async def get_payoff_projection(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     extra_monthly: float = Query(0),
+    debt_ids: list[uuid.UUID] = Query(default=[]),
 ) -> PayoffSummary:
-    result = await db.execute(select(Debt).where(Debt.user_id == current_user.id).order_by(Debt.priority_order))
+    query = select(Debt).where(Debt.user_id == current_user.id)
+    if debt_ids:
+        query = query.where(Debt.id.in_(debt_ids))
+    query = query.order_by(Debt.priority_order)
+    result = await db.execute(query)
     debts = list(result.scalars().all())
     if not debts:
         return PayoffSummary(
