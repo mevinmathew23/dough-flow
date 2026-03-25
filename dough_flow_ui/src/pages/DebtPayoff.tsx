@@ -369,15 +369,19 @@ export default function DebtPayoff() {
                       <span className="text-sm font-semibold">
                         {getAccountName(debt.account_id)}
                       </span>
-                      <span className="bg-orange-500/10 text-orange-400 px-2 py-0.5 rounded-full text-xs font-mono">
-                        {formatPercent(debt.interest_rate)} APR
-                      </span>
+                      {debt.interest_rate > 0 && (
+                        <span className="bg-orange-500/10 text-orange-400 px-2 py-0.5 rounded-full text-xs font-mono">
+                          {formatPercent(debt.interest_rate)} APR
+                        </span>
+                      )}
                     </div>
                     <div className="text-xs text-slate-400 mt-0.5">
-                      {FREQUENCY_LABELS[debt.compounding_frequency]} compounding
+                      {debt.interest_rate > 0 && (
+                        <span>{FREQUENCY_LABELS[debt.compounding_frequency]} compounding</span>
+                      )}
                       {debt.target_payoff_date && (
-                        <span className="ml-2">
-                          · Target:{' '}
+                        <span className={debt.interest_rate > 0 ? 'ml-2' : ''}>
+                          {debt.interest_rate > 0 && '· '}Target:{' '}
                           {format(new Date(debt.target_payoff_date + 'T00:00:00'), 'MMM d, yyyy')}
                         </span>
                       )}
