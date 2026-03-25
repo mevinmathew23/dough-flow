@@ -6,7 +6,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from api.database import async_session
-from api.routers import accounts, auth, budgets, categories, csv_import, debt_groups, debts, goals, reports, transactions
+from api.routers import (
+    accounts,
+    auth,
+    budgets,
+    categories,
+    csv_import,
+    debt_groups,
+    debts,
+    goals,
+    reports,
+    transactions,
+)
 from api.seed import seed_default_categories
 
 

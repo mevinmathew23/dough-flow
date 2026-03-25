@@ -128,9 +128,7 @@ export default function Transactions() {
     if (!form.account_id) return
     const account = accounts.find((a) => a.id === form.account_id)
     if (account?.type === 'credit') {
-      const paymentCategory = categories.find(
-        (c) => c.name.toLowerCase() === 'payment',
-      )
+      const paymentCategory = categories.find((c) => c.name.toLowerCase() === 'payment')
       setForm((prev) => ({
         ...prev,
         type: 'payment',

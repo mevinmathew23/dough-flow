@@ -3,7 +3,14 @@ import { useEffect, useState } from 'react'
 import api from '../api/client'
 import Modal from '../components/Modal'
 import { useCurrency } from '../contexts/CurrencyContext'
-import { Account, CompoundingFrequency, Debt, DebtGroup, DebtGroupSummary, PayoffSummary } from '../types'
+import {
+  Account,
+  CompoundingFrequency,
+  Debt,
+  DebtGroup,
+  DebtGroupSummary,
+  PayoffSummary,
+} from '../types'
 
 const COMPOUNDING_FREQUENCIES: CompoundingFrequency[] = [
   'daily',
@@ -414,19 +421,28 @@ export default function DebtPayoff() {
             {debtGroups.length > 0 && (
               <div className="mb-2 space-y-1">
                 {debtGroups.map((group) => {
-                  const allSelected = group.debt_ids.length > 0 && group.debt_ids.every((id) => selectedDebtIds.has(id))
+                  const allSelected =
+                    group.debt_ids.length > 0 &&
+                    group.debt_ids.every((id) => selectedDebtIds.has(id))
                   const someSelected = group.debt_ids.some((id) => selectedDebtIds.has(id))
                   return (
-                    <label key={group.id} className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+                    <label
+                      key={group.id}
+                      className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer"
+                    >
                       <input
                         type="checkbox"
                         checked={allSelected}
-                        ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected }}
+                        ref={(el) => {
+                          if (el) el.indeterminate = someSelected && !allSelected
+                        }}
                         onChange={() => toggleGroupSelection(group.id)}
                         className="rounded cursor-pointer"
                       />
                       <span className="text-blue-400 font-medium">{group.name}</span>
-                      <span className="text-xs text-slate-500">({group.debt_ids.length} debts)</span>
+                      <span className="text-xs text-slate-500">
+                        ({group.debt_ids.length} debts)
+                      </span>
                     </label>
                   )
                 })}
@@ -437,7 +453,10 @@ export default function DebtPayoff() {
             {/* Individual debt toggles */}
             <div className="space-y-1">
               {sortedDebts.map((debt) => (
-                <label key={debt.id} className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+                <label
+                  key={debt.id}
+                  className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer"
+                >
                   <input
                     type="checkbox"
                     checked={selectedDebtIds.has(debt.id)}
@@ -508,33 +527,49 @@ export default function DebtPayoff() {
           ) : null}
 
           {/* Group subtotals */}
-          {debtGroups.filter((g) => g.debt_ids.some((id) => selectedDebtIds.has(id))).length > 0 && (
+          {debtGroups.filter((g) => g.debt_ids.some((id) => selectedDebtIds.has(id))).length >
+            0 && (
             <div className="mt-4 space-y-2">
               <p className="text-xs text-slate-400 uppercase tracking-wider">Group Subtotals</p>
               {debtGroups
                 .filter((g) => g.debt_ids.some((id) => selectedDebtIds.has(id)))
                 .map((group) => {
-                  const groupDebts = debts.filter((d) => group.debt_ids.includes(d.id) && selectedDebtIds.has(d.id))
+                  const groupDebts = debts.filter(
+                    (d) => group.debt_ids.includes(d.id) && selectedDebtIds.has(d.id),
+                  )
                   const groupBalance = groupDebts.reduce((sum, d) => sum + d.current_balance, 0)
-                  const groupProjections = payoffSummary?.projections.filter((p) =>
-                    group.debt_ids.includes(p.debt_id),
-                  ) ?? []
-                  const groupInterest = groupProjections.reduce((sum, p) => sum + p.total_interest, 0)
-                  const groupPayoff = groupProjections.length > 0
-                    ? groupProjections.reduce(
-                        (max, p) => (p.months_to_payoff > max ? p.months_to_payoff : max),
-                        0,
-                      )
-                    : 0
+                  const groupProjections =
+                    payoffSummary?.projections.filter((p) => group.debt_ids.includes(p.debt_id)) ??
+                    []
+                  const groupInterest = groupProjections.reduce(
+                    (sum, p) => sum + p.total_interest,
+                    0,
+                  )
+                  const groupPayoff =
+                    groupProjections.length > 0
+                      ? groupProjections.reduce(
+                          (max, p) => (p.months_to_payoff > max ? p.months_to_payoff : max),
+                          0,
+                        )
+                      : 0
                   return (
-                    <div key={group.id} className="bg-navy-850 rounded-lg p-3 flex items-center justify-between">
+                    <div
+                      key={group.id}
+                      className="bg-navy-850 rounded-lg p-3 flex items-center justify-between"
+                    >
                       <span className="text-sm text-blue-400 font-medium">{group.name}</span>
                       <div className="flex gap-6 text-xs">
                         <span className="text-slate-400">
-                          Balance: <span className="text-white font-mono">{formatCurrency(groupBalance)}</span>
+                          Balance:{' '}
+                          <span className="text-white font-mono">
+                            {formatCurrency(groupBalance)}
+                          </span>
                         </span>
                         <span className="text-slate-400">
-                          Interest: <span className="text-red-400 font-mono">{formatCurrency(groupInterest)}</span>
+                          Interest:{' '}
+                          <span className="text-red-400 font-mono">
+                            {formatCurrency(groupInterest)}
+                          </span>
                         </span>
                         <span className="text-slate-400">
                           Months: <span className="text-white font-mono">{groupPayoff}</span>
@@ -574,7 +609,9 @@ export default function DebtPayoff() {
 
           {/* Group list */}
           {debtGroups.length === 0 ? (
-            <p className="text-sm text-slate-400">No groups yet. Create one to organize your debts.</p>
+            <p className="text-sm text-slate-400">
+              No groups yet. Create one to organize your debts.
+            </p>
           ) : (
             <div className="space-y-2">
               {debtGroups.map((group) => (
@@ -637,7 +674,10 @@ export default function DebtPayoff() {
                   {managingGroupId === group.id && (
                     <div className="space-y-1 mt-2 border-t border-navy-700 pt-2">
                       {sortedDebts.map((debt) => (
-                        <label key={debt.id} className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+                        <label
+                          key={debt.id}
+                          className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer"
+                        >
                           <input
                             type="checkbox"
                             checked={group.debt_ids.includes(debt.id)}
