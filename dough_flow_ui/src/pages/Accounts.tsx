@@ -66,7 +66,7 @@ export default function Accounts() {
     balance: '',
     interest_rate: '',
     minimumPayment: '',
-    compoundingFrequency: 'monthly' as CompoundingFrequency,
+    compoundingFrequency: '' as CompoundingFrequency | '',
   })
   const [error, setError] = useState('')
 
@@ -95,7 +95,7 @@ export default function Accounts() {
       balance: '',
       interest_rate: '',
       minimumPayment: '',
-      compoundingFrequency: 'monthly',
+      compoundingFrequency: '',
     })
     setError('')
     setModalOpen(true)
@@ -110,7 +110,7 @@ export default function Accounts() {
       balance: String(account.balance),
       interest_rate: account.interest_rate != null ? String(account.interest_rate * 100) : '',
       minimumPayment: '',
-      compoundingFrequency: 'monthly',
+      compoundingFrequency: '',
     })
     setError('')
     setModalOpen(true)
@@ -144,7 +144,9 @@ export default function Accounts() {
           if (form.minimumPayment) {
             createPayload.minimum_payment = parseFloat(form.minimumPayment)
           }
-          createPayload.compounding_frequency = form.compoundingFrequency
+          if (form.compoundingFrequency) {
+            createPayload.compounding_frequency = form.compoundingFrequency
+          }
         }
         await api.post('/accounts', createPayload)
       }
@@ -351,6 +353,9 @@ export default function Accounts() {
                   }
                   className={inputClass}
                 >
+                  <option value="" disabled>
+                    Select frequency
+                  </option>
                   {COMPOUNDING_OPTIONS.map((opt) => (
                     <option key={opt} value={opt}>
                       {COMPOUNDING_LABELS[opt]}
