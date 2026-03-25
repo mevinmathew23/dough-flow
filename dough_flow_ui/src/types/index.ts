@@ -119,6 +119,13 @@ export interface DebtGroupSummary {
   debt_count: number
 }
 
+export interface DebtGroup {
+  id: string
+  name: string
+  debt_ids: string[]
+  created_at: string
+}
+
 export interface Budget {
   id: string
   user_id: string
