@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.database import get_db
 from api.dependencies import get_current_user
+from api.models.debt_group import DebtGroup
 from api.models.user import User
 from api.schemas.debt_group import (
     DebtGroupCreate,
@@ -24,7 +25,7 @@ from api.services.debt_group_service import (
 router = APIRouter(prefix="/api/debt-groups", tags=["debt-groups"])
 
 
-def _to_response(group) -> DebtGroupResponse:
+def _to_response(group: DebtGroup) -> DebtGroupResponse:
     return DebtGroupResponse(
         id=group.id,
         name=group.name,

@@ -79,8 +79,8 @@ async def set_group_debts(
 
     # Add new membership
     if debt_ids:
-        result = await db.execute(select(Debt).where(Debt.id.in_(debt_ids), Debt.user_id == user_id))
-        group.debts = list(result.scalars().all())
+        debt_result = await db.execute(select(Debt).where(Debt.id.in_(debt_ids), Debt.user_id == user_id))
+        group.debts = list(debt_result.scalars().all())
 
     await db.commit()
 
