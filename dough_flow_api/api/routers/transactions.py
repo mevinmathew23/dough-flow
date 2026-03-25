@@ -13,6 +13,8 @@ from api.schemas.transaction import (
     BulkCategorizeRequest,
     BulkDeleteRequest,
     BulkDeleteResponse,
+    BulkUpdateTypeRequest,
+    BulkUpdateTypeResponse,
     TransactionCreate,
     TransactionResponse,
     TransactionUpdate,
@@ -21,6 +23,7 @@ from api.services.transaction_service import (
     build_transaction_query,
     bulk_categorize_transactions,
     bulk_delete_transactions,
+    bulk_update_type,
 )
 
 router = APIRouter(prefix="/api/transactions", tags=["transactions"])
@@ -132,3 +135,13 @@ async def bulk_categorize(
 ) -> dict[str, int]:
     updated_count = await bulk_categorize_transactions(db, current_user.id, data.transaction_ids, data.category_id)
     return {"updated_count": updated_count}
+
+
+@router.post("/bulk-update-type", response_model=BulkUpdateTypeResponse)
+async def bulk_update_type_endpoint(
+    data: BulkUpdateTypeRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> BulkUpdateTypeResponse:
+    updated_count = await bulk_update_type(db, current_user.id, data.transaction_ids, data.type)
+    return BulkUpdateTypeResponse(updated_count=updated_count)
