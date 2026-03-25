@@ -240,6 +240,50 @@ async def test_grouped_summary(auth_client: AsyncClient):
     assert abs(data["weighted_interest_rate"] - 0.1) < 0.001
 
 
+async def test_payoff_with_debt_ids_filter(auth_client: AsyncClient):
+    # Create two debt accounts
+    await auth_client.post("/api/accounts", json={
+        "name": "Card 1", "type": "credit", "institution": "Bank",
+        "balance": -5000, "interest_rate": 0.20, "minimum_payment": 100,
+        "compounding_frequency": "monthly",
+    })
+    await auth_client.post("/api/accounts", json={
+        "name": "Card 2", "type": "credit", "institution": "Bank",
+        "balance": -10000, "interest_rate": 0.05, "minimum_payment": 200,
+        "compounding_frequency": "monthly",
+    })
+
+    # Get the debt IDs
+    debts_res = await auth_client.get("/api/debts")
+    all_debts = debts_res.json()
+    assert len(all_debts) == 2
+    first_debt_id = all_debts[0]["id"]
+
+    # Payoff with only first debt
+    response = await auth_client.get(f"/api/debts/payoff?debt_ids={first_debt_id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["projections"]) == 1
+    assert data["projections"][0]["debt_id"] == first_debt_id
+
+
+async def test_payoff_without_filter_returns_all(auth_client: AsyncClient):
+    await auth_client.post("/api/accounts", json={
+        "name": "Card 1", "type": "credit", "institution": "Bank",
+        "balance": -5000, "interest_rate": 0.20, "minimum_payment": 100,
+        "compounding_frequency": "monthly",
+    })
+    await auth_client.post("/api/accounts", json={
+        "name": "Card 2", "type": "credit", "institution": "Bank",
+        "balance": -10000, "interest_rate": 0.05, "minimum_payment": 200,
+        "compounding_frequency": "monthly",
+    })
+
+    response = await auth_client.get("/api/debts/payoff")
+    assert response.status_code == 200
+    assert len(response.json()["projections"]) == 2
+
+
 async def test_unauthorized_debts(client: AsyncClient):
     response = await client.get("/api/debts")
     assert response.status_code == 401
