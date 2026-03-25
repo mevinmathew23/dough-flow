@@ -12,6 +12,8 @@ import {
   PayoffSummary,
 } from '../types'
 
+const STORAGE_KEY = 'doughflow:payoff-selection'
+
 const COMPOUNDING_FREQUENCIES: CompoundingFrequency[] = [
   'daily',
   'weekly',
@@ -68,34 +70,34 @@ export default function DebtPayoff() {
   const [simulatorLoading, setSimulatorLoading] = useState(false)
 
   // Debt groups
-  const [debtGroups, setDebtGroups] = useState<DebtGroup[]>([])
-  const [selectedDebtIds, setSelectedDebtIds] = useState<Set<string>>(new Set())
-  const [newGroupName, setNewGroupName] = useState('')
-  const [editingGroupId, setEditingGroupId] = useState<string | null>(null)
-  const [editingGroupName, setEditingGroupName] = useState('')
-  const [managingGroupId, setManagingGroupId] = useState<string | null>(null)
+  const [groups, setGroups] = useState<DebtGroup[]>([])
+  const [groupModalOpen, setGroupModalOpen] = useState(false)
+  const [editingGroup, setEditingGroup] = useState<DebtGroup | null>(null)
+  const [groupName, setGroupName] = useState('')
+  const [managingGroup, setManagingGroup] = useState<DebtGroup | null>(null)
+  const [memberSelection, setMemberSelection] = useState<Set<string>>(new Set())
 
-  const fetchGroups = async () => {
-    try {
-      const res = await api.get('/debt-groups')
-      setDebtGroups(res.data)
-    } catch {
-      // non-critical
-    }
-  }
+  // Debt selection for simulator
+  const [selectedDebtIds, setSelectedDebtIds] = useState<Set<string>>(new Set())
+  const [selectionInitialized, setSelectionInitialized] = useState(false)
+
+  // -------------------------------------------------------------------------
+  // Data fetching
+  // -------------------------------------------------------------------------
 
   const fetchAll = async () => {
     try {
-      const [debtsRes, accountsRes, groupRes] = await Promise.all([
+      const [debtsRes, accountsRes, groupRes, groupsRes] = await Promise.all([
         api.get('/debts'),
         api.get('/accounts'),
         api.get('/debts/grouped'),
+        api.get('/debt-groups'),
       ])
       setDebts(debtsRes.data)
       setAccounts(accountsRes.data)
       setGroupSummary(groupRes.data)
+      setGroups(groupsRes.data)
       setError('')
-      await fetchGroups()
     } catch {
       setError('Failed to load debt data')
     } finally {
@@ -107,16 +109,53 @@ export default function DebtPayoff() {
     fetchAll()
   }, [])
 
-  const fetchPayoff = async (extra: number, debtIdOverride?: Set<string>) => {
-    if (debts.length === 0) return
+  // Initialize selection from localStorage once debts are loaded
+  useEffect(() => {
+    if (debts.length === 0 || selectionInitialized) return
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (saved) {
+        const ids: string[] = JSON.parse(saved)
+        const validIds = ids.filter((id) => debts.some((d) => d.id === id))
+        if (validIds.length > 0) {
+          setSelectedDebtIds(new Set(validIds))
+          setSelectionInitialized(true)
+          return
+        }
+      }
+    } catch {
+      // ignore parse errors
+    }
+    // Default: all debts selected
+    setSelectedDebtIds(new Set(debts.map((d) => d.id)))
+    setSelectionInitialized(true)
+  }, [debts, selectionInitialized])
+
+  // Save selection to localStorage whenever it changes
+  useEffect(() => {
+    if (!selectionInitialized) return
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(selectedDebtIds)))
+  }, [selectedDebtIds, selectionInitialized])
+
+  // Fetch payoff whenever selection or debts change
+  useEffect(() => {
+    if (!selectionInitialized || selectedDebtIds.size === 0) {
+      setPayoffSummary(null)
+      return
+    }
+    fetchPayoff(extraMonthly)
+  }, [selectionInitialized, selectedDebtIds]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const fetchPayoff = async (extra: number) => {
+    if (selectedDebtIds.size === 0) {
+      setPayoffSummary(null)
+      return
+    }
     setSimulatorLoading(true)
     try {
-      const ids = debtIdOverride ?? selectedDebtIds
       const params = new URLSearchParams()
       params.append('extra_monthly', String(extra))
-      if (ids.size > 0) {
-        ids.forEach((id) => params.append('debt_ids', id))
-      }
+      selectedDebtIds.forEach((id) => params.append('debt_ids', id))
       const res = await api.get(`/debts/payoff?${params.toString()}`)
       setPayoffSummary(res.data)
     } catch {
@@ -130,21 +169,124 @@ export default function DebtPayoff() {
     fetchPayoff(value)
   }
 
-  useEffect(() => {
-    if (debts.length > 0) {
-      const allIds = new Set(debts.map((d) => d.id))
-      setSelectedDebtIds(allIds)
-      fetchPayoff(extraMonthly, allIds)
-    }
-  }, [debts.length])
+  // -------------------------------------------------------------------------
+  // Debt selection helpers
+  // -------------------------------------------------------------------------
 
-  useEffect(() => {
-    if (debts.length > 0 && selectedDebtIds.size > 0) {
-      fetchPayoff(extraMonthly)
-    } else if (debts.length > 0 && selectedDebtIds.size === 0) {
-      setPayoffSummary(null)
+  const toggleDebt = (debtId: string) => {
+    setSelectedDebtIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(debtId)) next.delete(debtId)
+      else next.add(debtId)
+      return next
+    })
+  }
+
+  const toggleGroup = (group: DebtGroup) => {
+    const allSelected = group.debt_ids.every((id) => selectedDebtIds.has(id))
+    setSelectedDebtIds((prev) => {
+      const next = new Set(prev)
+      if (allSelected) {
+        group.debt_ids.forEach((id) => next.delete(id))
+      } else {
+        group.debt_ids.forEach((id) => next.add(id))
+      }
+      return next
+    })
+  }
+
+  const selectAll = () => setSelectedDebtIds(new Set(debts.map((d) => d.id)))
+  const selectNone = () => setSelectedDebtIds(new Set())
+
+  const getGroupCheckState = (group: DebtGroup): 'all' | 'some' | 'none' => {
+    if (group.debt_ids.length === 0) return 'none'
+    const selectedCount = group.debt_ids.filter((id) => selectedDebtIds.has(id)).length
+    if (selectedCount === group.debt_ids.length) return 'all'
+    if (selectedCount > 0) return 'some'
+    return 'none'
+  }
+
+  // -------------------------------------------------------------------------
+  // Group management
+  // -------------------------------------------------------------------------
+
+  const fetchGroups = async () => {
+    try {
+      const res = await api.get('/debt-groups')
+      setGroups(res.data)
+    } catch {
+      setError('Failed to load debt groups')
     }
-  }, [selectedDebtIds])
+  }
+
+  const openCreateGroup = () => {
+    setEditingGroup(null)
+    setGroupName('')
+    setGroupModalOpen(true)
+  }
+
+  const openEditGroup = (group: DebtGroup) => {
+    setEditingGroup(group)
+    setGroupName(group.name)
+    setGroupModalOpen(true)
+  }
+
+  const handleGroupSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!groupName.trim()) return
+    try {
+      if (editingGroup) {
+        await api.patch(`/debt-groups/${editingGroup.id}`, { name: groupName.trim() })
+      } else {
+        await api.post('/debt-groups', { name: groupName.trim() })
+      }
+      setGroupModalOpen(false)
+      await fetchGroups()
+    } catch {
+      setError('Failed to save group')
+    }
+  }
+
+  const handleDeleteGroup = async (groupId: string) => {
+    if (!confirm('Delete this group? The debts themselves will not be deleted.')) return
+    try {
+      await api.delete(`/debt-groups/${groupId}`)
+      await fetchGroups()
+    } catch {
+      setError('Failed to delete group')
+    }
+  }
+
+  const openManageMembers = (group: DebtGroup) => {
+    setManagingGroup(group)
+    setMemberSelection(new Set(group.debt_ids))
+  }
+
+  const toggleMember = (debtId: string) => {
+    setMemberSelection((prev) => {
+      const next = new Set(prev)
+      if (next.has(debtId)) next.delete(debtId)
+      else next.add(debtId)
+      return next
+    })
+  }
+
+  const saveMembers = async () => {
+    if (!managingGroup) return
+    try {
+      await api.put(`/debt-groups/${managingGroup.id}/debts`, {
+        debt_ids: Array.from(memberSelection),
+      })
+      setManagingGroup(null)
+      await fetchGroups()
+    } catch {
+      setError('Failed to update group members')
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Debt CRUD
+  // -------------------------------------------------------------------------
 
   const getProjection = (debtId: string) =>
     payoffSummary?.projections.find((p) => p.debt_id === debtId) ?? null
@@ -251,90 +393,31 @@ export default function DebtPayoff() {
     }
   }
 
-  const handleCreateGroup = async () => {
-    if (!newGroupName.trim()) return
-    try {
-      await api.post('/debt-groups', { name: newGroupName.trim() })
-      setNewGroupName('')
-      await fetchGroups()
-    } catch {
-      setError('Failed to create group')
-    }
-  }
-
-  const handleRenameGroup = async (groupId: string) => {
-    if (!editingGroupName.trim()) return
-    try {
-      await api.patch(`/debt-groups/${groupId}`, { name: editingGroupName.trim() })
-      setEditingGroupId(null)
-      setEditingGroupName('')
-      await fetchGroups()
-    } catch {
-      setError('Failed to rename group')
-    }
-  }
-
-  const handleDeleteGroup = async (groupId: string) => {
-    if (!confirm('Delete this group? Debts will not be deleted.')) return
-    try {
-      await api.delete(`/debt-groups/${groupId}`)
-      await fetchGroups()
-    } catch {
-      setError('Failed to delete group')
-    }
-  }
-
-  const handleSetGroupDebts = async (groupId: string, debtIds: string[]) => {
-    try {
-      await api.put(`/debt-groups/${groupId}/debts`, { debt_ids: debtIds })
-      await fetchGroups()
-    } catch {
-      setError('Failed to update group members')
-    }
-  }
-
-  const toggleGroupDebtMember = (groupId: string, debtId: string) => {
-    const group = debtGroups.find((g) => g.id === groupId)
-    if (!group) return
-    const current = new Set(group.debt_ids)
-    if (current.has(debtId)) current.delete(debtId)
-    else current.add(debtId)
-    handleSetGroupDebts(groupId, Array.from(current))
-  }
-
-  const toggleDebtSelection = (debtId: string) => {
-    setSelectedDebtIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(debtId)) next.delete(debtId)
-      else next.add(debtId)
-      return next
-    })
-  }
-
-  const toggleGroupSelection = (groupId: string) => {
-    const group = debtGroups.find((g) => g.id === groupId)
-    if (!group) return
-    setSelectedDebtIds((prev) => {
-      const next = new Set(prev)
-      const allSelected = group.debt_ids.every((id) => prev.has(id))
-      if (allSelected) {
-        group.debt_ids.forEach((id) => next.delete(id))
-      } else {
-        group.debt_ids.forEach((id) => next.add(id))
-      }
-      return next
-    })
-  }
-
-  const selectAllDebts = () => {
-    setSelectedDebtIds(new Set(debts.map((d) => d.id)))
-  }
-
-  const clearDebtSelection = () => {
-    setSelectedDebtIds(new Set())
-  }
+  // -------------------------------------------------------------------------
+  // Derived values
+  // -------------------------------------------------------------------------
 
   const sortedDebts = [...debts].sort((a, b) => a.priority_order - b.priority_order)
+
+  // Group subtotals for selected debts
+  const getGroupSubtotal = (group: DebtGroup) => {
+    const selectedGroupDebts = debts.filter(
+      (d) => group.debt_ids.includes(d.id) && selectedDebtIds.has(d.id),
+    )
+    if (selectedGroupDebts.length === 0) return null
+    const totalBalance = selectedGroupDebts.reduce((s, d) => s + d.current_balance, 0)
+    const totalInterest = selectedGroupDebts.reduce((s, d) => {
+      const proj = getProjection(d.id)
+      return s + (proj?.total_interest ?? 0)
+    }, 0)
+    const maxMonths = Math.max(
+      ...selectedGroupDebts.map((d) => {
+        const proj = getProjection(d.id)
+        return proj?.months_to_payoff ?? 0
+      }),
+    )
+    return { totalBalance, totalInterest, maxMonths, count: selectedGroupDebts.length }
+  }
 
   const inputClass =
     'bg-navy-850 border border-navy-750 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-emerald-500 w-full'
@@ -360,7 +443,9 @@ export default function DebtPayoff() {
         </button>
       </div>
 
-      {error && !modalOpen && <p className="text-red-400 text-sm mb-4">{error}</p>}
+      {error && !modalOpen && !groupModalOpen && (
+        <p className="text-red-400 text-sm mb-4">{error}</p>
+      )}
 
       {debts.length > 0 && groupSummary && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -393,85 +478,165 @@ export default function DebtPayoff() {
         </div>
       )}
 
+      {/* Debt Selection & Groups */}
       {debts.length > 0 && (
         <div className="bg-navy-900 border border-navy-800 rounded-xl p-5 mb-6">
-          <h2 className="text-base font-semibold font-display mb-4">Payoff Simulator</h2>
-
-          {/* Debt Selection */}
-          <div className="mb-4 border border-navy-750 rounded-lg p-3">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-slate-300 font-medium">Select Debts to Simulate</p>
-              <div className="flex gap-2">
-                <button
-                  onClick={selectAllDebts}
-                  className="text-xs text-emerald-400 hover:text-emerald-300 cursor-pointer"
-                >
-                  All
-                </button>
-                <button
-                  onClick={clearDebtSelection}
-                  className="text-xs text-slate-400 hover:text-white cursor-pointer"
-                >
-                  None
-                </button>
-              </div>
-            </div>
-
-            {/* Group toggles */}
-            {debtGroups.length > 0 && (
-              <div className="mb-2 space-y-1">
-                {debtGroups.map((group) => {
-                  const allSelected =
-                    group.debt_ids.length > 0 &&
-                    group.debt_ids.every((id) => selectedDebtIds.has(id))
-                  const someSelected = group.debt_ids.some((id) => selectedDebtIds.has(id))
-                  return (
-                    <label
-                      key={group.id}
-                      className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={allSelected}
-                        ref={(el) => {
-                          if (el) el.indeterminate = someSelected && !allSelected
-                        }}
-                        onChange={() => toggleGroupSelection(group.id)}
-                        className="rounded cursor-pointer"
-                      />
-                      <span className="text-blue-400 font-medium">{group.name}</span>
-                      <span className="text-xs text-slate-500">
-                        ({group.debt_ids.length} debts)
-                      </span>
-                    </label>
-                  )
-                })}
-                <div className="border-t border-navy-750 my-1" />
-              </div>
-            )}
-
-            {/* Individual debt toggles */}
-            <div className="space-y-1">
-              {sortedDebts.map((debt) => (
-                <label
-                  key={debt.id}
-                  className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedDebtIds.has(debt.id)}
-                    onChange={() => toggleDebtSelection(debt.id)}
-                    className="rounded cursor-pointer"
-                  />
-                  {getAccountName(debt.account_id)}
-                  <span className="text-xs text-slate-500 font-mono">
-                    {formatCurrency(debt.current_balance)}
-                  </span>
-                </label>
-              ))}
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-base font-semibold font-display">Debt Selection</h2>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={selectAll}
+                className="text-xs text-emerald-400 hover:text-emerald-300 cursor-pointer"
+              >
+                Select All
+              </button>
+              <span className="text-slate-600">|</span>
+              <button
+                onClick={selectNone}
+                className="text-xs text-slate-400 hover:text-white cursor-pointer"
+              >
+                Select None
+              </button>
             </div>
           </div>
 
+          {/* Groups */}
+          {groups.length > 0 && (
+            <div className="mb-4 space-y-2">
+              <p className="text-xs text-slate-400 uppercase tracking-wider mb-2">Groups</p>
+              {groups.map((group) => {
+                const checkState = getGroupCheckState(group)
+                return (
+                  <div
+                    key={group.id}
+                    className="bg-navy-850 border border-navy-750 rounded-lg px-3 py-2"
+                  >
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={checkState === 'all'}
+                          ref={(el) => {
+                            if (el) el.indeterminate = checkState === 'some'
+                          }}
+                          onChange={() => toggleGroup(group)}
+                          className="w-4 h-4 accent-emerald-500"
+                        />
+                        <span className="text-sm font-medium text-slate-200">{group.name}</span>
+                        <span className="text-xs text-slate-500">
+                          ({group.debt_ids.length} debt{group.debt_ids.length !== 1 ? 's' : ''})
+                        </span>
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => openManageMembers(group)}
+                          className="text-xs text-slate-400 hover:text-white cursor-pointer"
+                        >
+                          Members
+                        </button>
+                        <button
+                          onClick={() => openEditGroup(group)}
+                          className="text-xs text-slate-400 hover:text-white cursor-pointer"
+                        >
+                          Rename
+                        </button>
+                        <button
+                          onClick={() => handleDeleteGroup(group.id)}
+                          className="text-xs text-slate-400 hover:text-red-400 cursor-pointer"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Individual debts */}
+          <div className="space-y-1">
+            <p className="text-xs text-slate-400 uppercase tracking-wider mb-2">Individual Debts</p>
+            {sortedDebts.map((debt) => (
+              <label
+                key={debt.id}
+                className="flex items-center gap-2 py-1 cursor-pointer select-none"
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedDebtIds.has(debt.id)}
+                  onChange={() => toggleDebt(debt.id)}
+                  className="w-4 h-4 accent-emerald-500"
+                />
+                <span className="text-sm text-slate-300">{getAccountName(debt.account_id)}</span>
+                {debt.interest_rate > 0 && (
+                  <span className="text-xs text-orange-400 font-mono">
+                    {formatPercent(debt.interest_rate)}
+                  </span>
+                )}
+                <span className="text-xs text-slate-500 font-mono ml-auto">
+                  {formatCurrency(debt.current_balance)}
+                </span>
+              </label>
+            ))}
+          </div>
+
+          <div className="mt-3 flex items-center gap-3">
+            <button
+              onClick={openCreateGroup}
+              className="text-xs text-emerald-400 hover:text-emerald-300 cursor-pointer"
+            >
+              + New Group
+            </button>
+            <span className="text-xs text-slate-500">
+              {selectedDebtIds.size} of {debts.length} selected
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Group Subtotals */}
+      {payoffSummary &&
+        groups.length > 0 &&
+        groups.map((group) => {
+          const subtotal = getGroupSubtotal(group)
+          if (!subtotal) return null
+          return (
+            <div
+              key={group.id}
+              className="bg-navy-850 border border-navy-750 rounded-lg px-4 py-3 mb-3"
+            >
+              <p className="text-xs text-slate-400 uppercase tracking-wider mb-2">
+                {group.name} Subtotal
+              </p>
+              <div className="grid grid-cols-3 gap-4 text-sm">
+                <div>
+                  <span className="text-slate-400">Balance: </span>
+                  <span className="text-white font-mono">
+                    {formatCurrency(subtotal.totalBalance)}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400">Interest: </span>
+                  <span className="text-red-400 font-mono">
+                    {formatCurrency(subtotal.totalInterest)}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400">Payoff: </span>
+                  <span className="text-white font-mono">
+                    {subtotal.maxMonths} month{subtotal.maxMonths !== 1 ? 's' : ''}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )
+        })}
+
+      {/* Payoff Simulator */}
+      {debts.length > 0 && selectedDebtIds.size > 0 && (
+        <div className="bg-navy-900 border border-navy-800 rounded-xl p-5 mb-6">
+          <h2 className="text-base font-semibold font-display mb-4">Payoff Simulator</h2>
           <div className="mb-4">
             <label className="text-sm text-slate-300 block mb-3">
               Extra Monthly Payment:{' '}
@@ -525,187 +690,6 @@ export default function DebtPayoff() {
               </div>
             </div>
           ) : null}
-
-          {/* Group subtotals */}
-          {debtGroups.filter((g) => g.debt_ids.some((id) => selectedDebtIds.has(id))).length >
-            0 && (
-            <div className="mt-4 space-y-2">
-              <p className="text-xs text-slate-400 uppercase tracking-wider">Group Subtotals</p>
-              {debtGroups
-                .filter((g) => g.debt_ids.some((id) => selectedDebtIds.has(id)))
-                .map((group) => {
-                  const groupDebts = debts.filter(
-                    (d) => group.debt_ids.includes(d.id) && selectedDebtIds.has(d.id),
-                  )
-                  const groupBalance = groupDebts.reduce((sum, d) => sum + d.current_balance, 0)
-                  const groupProjections =
-                    payoffSummary?.projections.filter((p) => group.debt_ids.includes(p.debt_id)) ??
-                    []
-                  const groupInterest = groupProjections.reduce(
-                    (sum, p) => sum + p.total_interest,
-                    0,
-                  )
-                  const groupPayoff =
-                    groupProjections.length > 0
-                      ? groupProjections.reduce(
-                          (max, p) => (p.months_to_payoff > max ? p.months_to_payoff : max),
-                          0,
-                        )
-                      : 0
-                  return (
-                    <div
-                      key={group.id}
-                      className="bg-navy-850 rounded-lg p-3 flex items-center justify-between"
-                    >
-                      <span className="text-sm text-blue-400 font-medium">{group.name}</span>
-                      <div className="flex gap-6 text-xs">
-                        <span className="text-slate-400">
-                          Balance:{' '}
-                          <span className="text-white font-mono">
-                            {formatCurrency(groupBalance)}
-                          </span>
-                        </span>
-                        <span className="text-slate-400">
-                          Interest:{' '}
-                          <span className="text-red-400 font-mono">
-                            {formatCurrency(groupInterest)}
-                          </span>
-                        </span>
-                        <span className="text-slate-400">
-                          Months: <span className="text-white font-mono">{groupPayoff}</span>
-                        </span>
-                      </div>
-                    </div>
-                  )
-                })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Debt Group Management */}
-      {debts.length > 0 && (
-        <div className="bg-navy-900 border border-navy-800 rounded-xl p-5 mb-6">
-          <h2 className="text-base font-semibold font-display mb-4">Debt Groups</h2>
-
-          {/* Create group */}
-          <div className="flex gap-2 mb-4">
-            <input
-              type="text"
-              placeholder="New group name..."
-              value={newGroupName}
-              onChange={(e) => setNewGroupName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleCreateGroup()}
-              className={`${inputClass} flex-1`}
-            />
-            <button
-              onClick={handleCreateGroup}
-              disabled={!newGroupName.trim()}
-              className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm transition-colors cursor-pointer"
-            >
-              Create
-            </button>
-          </div>
-
-          {/* Group list */}
-          {debtGroups.length === 0 ? (
-            <p className="text-sm text-slate-400">
-              No groups yet. Create one to organize your debts.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {debtGroups.map((group) => (
-                <div key={group.id} className="bg-navy-850 border border-navy-750 rounded-lg p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    {editingGroupId === group.id ? (
-                      <div className="flex gap-2 flex-1 mr-2">
-                        <input
-                          type="text"
-                          value={editingGroupName}
-                          onChange={(e) => setEditingGroupName(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && handleRenameGroup(group.id)}
-                          className={`${inputClass} flex-1`}
-                          autoFocus
-                        />
-                        <button
-                          onClick={() => handleRenameGroup(group.id)}
-                          className="text-emerald-400 hover:text-emerald-300 text-sm cursor-pointer"
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={() => setEditingGroupId(null)}
-                          className="text-slate-400 hover:text-white text-sm cursor-pointer"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        <span className="text-sm font-medium text-blue-400">{group.name}</span>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => {
-                              setManagingGroupId(managingGroupId === group.id ? null : group.id)
-                            }}
-                            className="text-slate-400 hover:text-white text-xs cursor-pointer"
-                          >
-                            {managingGroupId === group.id ? 'Done' : 'Manage'}
-                          </button>
-                          <button
-                            onClick={() => {
-                              setEditingGroupId(group.id)
-                              setEditingGroupName(group.name)
-                            }}
-                            className="text-slate-400 hover:text-white text-xs cursor-pointer"
-                          >
-                            Rename
-                          </button>
-                          <button
-                            onClick={() => handleDeleteGroup(group.id)}
-                            className="text-slate-400 hover:text-red-400 text-xs cursor-pointer"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                  {managingGroupId === group.id && (
-                    <div className="space-y-1 mt-2 border-t border-navy-700 pt-2">
-                      {sortedDebts.map((debt) => (
-                        <label
-                          key={debt.id}
-                          className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={group.debt_ids.includes(debt.id)}
-                            onChange={() => toggleGroupDebtMember(group.id, debt.id)}
-                            className="rounded cursor-pointer"
-                          />
-                          {getAccountName(debt.account_id)}
-                          <span className="text-xs text-slate-500 font-mono">
-                            {formatCurrency(debt.current_balance)}
-                          </span>
-                        </label>
-                      ))}
-                    </div>
-                  )}
-                  {managingGroupId !== group.id && group.debt_ids.length > 0 && (
-                    <div className="text-xs text-slate-500">
-                      {group.debt_ids.length} debt{group.debt_ids.length !== 1 ? 's' : ''} ·{' '}
-                      {formatCurrency(
-                        debts
-                          .filter((d) => group.debt_ids.includes(d.id))
-                          .reduce((sum, d) => sum + d.current_balance, 0),
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       )}
 
@@ -716,167 +700,171 @@ export default function DebtPayoff() {
         </div>
       ) : (
         <div className="space-y-3">
-          {sortedDebts.map((debt) => {
-            const paidOff =
-              debt.principal_amount > 0
-                ? Math.max(
-                    0,
-                    ((debt.principal_amount - debt.current_balance) / debt.principal_amount) * 100,
-                  )
-                : 0
-            const progressCapped = Math.min(100, paidOff)
-            const projection = getProjection(debt.id)
-            const isExpanded = expandedDebtId === debt.id
+          {sortedDebts
+            .filter((d) => selectedDebtIds.has(d.id))
+            .map((debt) => {
+              const paidOff =
+                debt.principal_amount > 0
+                  ? Math.max(
+                      0,
+                      ((debt.principal_amount - debt.current_balance) / debt.principal_amount) *
+                        100,
+                    )
+                  : 0
+              const progressCapped = Math.min(100, paidOff)
+              const projection = getProjection(debt.id)
+              const isExpanded = expandedDebtId === debt.id
 
-            return (
-              <div key={debt.id} className="bg-navy-900 border border-navy-800 rounded-xl p-4">
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-slate-500 font-medium">
-                        #{debt.priority_order}
-                      </span>
-                      <span className="text-sm font-semibold">
-                        {getAccountName(debt.account_id)}
-                      </span>
-                      {debt.interest_rate > 0 && (
-                        <span className="bg-orange-500/10 text-orange-400 px-2 py-0.5 rounded-full text-xs font-mono">
-                          {formatPercent(debt.interest_rate)} APR
+              return (
+                <div key={debt.id} className="bg-navy-900 border border-navy-800 rounded-xl p-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-slate-500 font-medium">
+                          #{debt.priority_order}
                         </span>
-                      )}
-                    </div>
-                    <div className="text-xs text-slate-400 mt-0.5">
-                      {debt.interest_rate > 0 && (
-                        <span>{FREQUENCY_LABELS[debt.compounding_frequency]} compounding</span>
-                      )}
-                      {debt.target_payoff_date && (
-                        <span className={debt.interest_rate > 0 ? 'ml-2' : ''}>
-                          {debt.interest_rate > 0 && '· '}Target:{' '}
-                          {format(new Date(debt.target_payoff_date + 'T00:00:00'), 'MMM d, yyyy')}
+                        <span className="text-sm font-semibold">
+                          {getAccountName(debt.account_id)}
                         </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => openEdit(debt)}
-                      className="text-slate-400 hover:text-white text-sm cursor-pointer"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(debt.id)}
-                      className="text-slate-400 hover:text-red-400 text-sm cursor-pointer"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-slate-400">
-                    Balance:{' '}
-                    <span className="text-white font-medium font-mono">
-                      {formatCurrency(debt.current_balance)}
-                    </span>
-                  </span>
-                  <span className="text-slate-400">
-                    Principal:{' '}
-                    <span className="text-slate-300 font-mono">
-                      {formatCurrency(debt.principal_amount)}
-                    </span>
-                  </span>
-                  <span className="text-slate-400">
-                    Min payment:{' '}
-                    <span className="text-slate-300 font-mono">
-                      {formatCurrency(debt.minimum_payment)}
-                    </span>
-                  </span>
-                </div>
-
-                <div className="mt-2">
-                  <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-                    <span>Paid off</span>
-                    <span className="font-mono">{progressCapped.toFixed(1)}%</span>
-                  </div>
-                  <div className="h-2 bg-navy-850 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-emerald-500 rounded-full transition-all"
-                      style={{ width: `${progressCapped}%` }}
-                    />
-                  </div>
-                </div>
-
-                {payoffSummary && (
-                  <div className="mt-3">
-                    <button
-                      onClick={() => setExpandedDebtId(isExpanded ? null : debt.id)}
-                      className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
-                    >
-                      {isExpanded ? 'Hide Schedule' : 'Show Amortization'}
-                    </button>
-
-                    {isExpanded && projection && (
-                      <div className="mt-3 max-h-64 overflow-y-auto rounded-lg border border-navy-750">
-                        <table className="w-full text-xs">
-                          <thead className="bg-navy-850 sticky top-0">
-                            <tr>
-                              <th className="text-left px-3 py-2 text-slate-400 font-medium">
-                                Month
-                              </th>
-                              <th className="text-right px-3 py-2 text-slate-400 font-medium">
-                                Payment
-                              </th>
-                              <th className="text-right px-3 py-2 text-slate-400 font-medium">
-                                Principal
-                              </th>
-                              <th className="text-right px-3 py-2 text-slate-400 font-medium">
-                                Interest
-                              </th>
-                              <th className="text-right px-3 py-2 text-slate-400 font-medium">
-                                Balance
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {projection.schedule.map((row) => (
-                              <tr
-                                key={row.month}
-                                className="border-t border-navy-800 hover:bg-navy-850/50"
-                              >
-                                <td className="px-3 py-1.5 text-slate-300 font-mono">
-                                  {row.month}
-                                </td>
-                                <td className="px-3 py-1.5 text-right text-slate-300 font-mono">
-                                  {formatCurrency(row.payment)}
-                                </td>
-                                <td className="px-3 py-1.5 text-right text-green-400 font-mono">
-                                  {formatCurrency(row.principal)}
-                                </td>
-                                <td className="px-3 py-1.5 text-right text-red-400 font-mono">
-                                  {formatCurrency(row.interest)}
-                                </td>
-                                <td className="px-3 py-1.5 text-right text-slate-300 font-mono">
-                                  {formatCurrency(row.balance)}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                        {debt.interest_rate > 0 && (
+                          <span className="bg-orange-500/10 text-orange-400 px-2 py-0.5 rounded-full text-xs font-mono">
+                            {formatPercent(debt.interest_rate)} APR
+                          </span>
+                        )}
                       </div>
-                    )}
-
-                    {isExpanded && !projection && (
-                      <p className="mt-2 text-xs text-slate-500">No projection data available.</p>
-                    )}
+                      <div className="text-xs text-slate-400 mt-0.5">
+                        {debt.interest_rate > 0 && (
+                          <>{FREQUENCY_LABELS[debt.compounding_frequency]} compounding</>
+                        )}
+                        {debt.target_payoff_date && (
+                          <span className={debt.interest_rate > 0 ? 'ml-2' : ''}>
+                            {debt.interest_rate > 0 && '· '}Target:{' '}
+                            {format(new Date(debt.target_payoff_date + 'T00:00:00'), 'MMM d, yyyy')}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => openEdit(debt)}
+                        className="text-slate-400 hover:text-white text-sm cursor-pointer"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(debt.id)}
+                        className="text-slate-400 hover:text-red-400 text-sm cursor-pointer"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
-                )}
-              </div>
-            )
-          })}
+
+                  <div className="flex items-center justify-between text-sm mb-2">
+                    <span className="text-slate-400">
+                      Balance:{' '}
+                      <span className="text-white font-medium font-mono">
+                        {formatCurrency(debt.current_balance)}
+                      </span>
+                    </span>
+                    <span className="text-slate-400">
+                      Principal:{' '}
+                      <span className="text-slate-300 font-mono">
+                        {formatCurrency(debt.principal_amount)}
+                      </span>
+                    </span>
+                    <span className="text-slate-400">
+                      Min payment:{' '}
+                      <span className="text-slate-300 font-mono">
+                        {formatCurrency(debt.minimum_payment)}
+                      </span>
+                    </span>
+                  </div>
+
+                  <div className="mt-2">
+                    <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
+                      <span>Paid off</span>
+                      <span className="font-mono">{progressCapped.toFixed(1)}%</span>
+                    </div>
+                    <div className="h-2 bg-navy-850 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-emerald-500 rounded-full transition-all"
+                        style={{ width: `${progressCapped}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {payoffSummary && (
+                    <div className="mt-3">
+                      <button
+                        onClick={() => setExpandedDebtId(isExpanded ? null : debt.id)}
+                        className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
+                      >
+                        {isExpanded ? 'Hide Schedule' : 'Show Amortization'}
+                      </button>
+
+                      {isExpanded && projection && (
+                        <div className="mt-3 max-h-64 overflow-y-auto rounded-lg border border-navy-750">
+                          <table className="w-full text-xs">
+                            <thead className="bg-navy-850 sticky top-0">
+                              <tr>
+                                <th className="text-left px-3 py-2 text-slate-400 font-medium">
+                                  Month
+                                </th>
+                                <th className="text-right px-3 py-2 text-slate-400 font-medium">
+                                  Payment
+                                </th>
+                                <th className="text-right px-3 py-2 text-slate-400 font-medium">
+                                  Principal
+                                </th>
+                                <th className="text-right px-3 py-2 text-slate-400 font-medium">
+                                  Interest
+                                </th>
+                                <th className="text-right px-3 py-2 text-slate-400 font-medium">
+                                  Balance
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {projection.schedule.map((row) => (
+                                <tr
+                                  key={row.month}
+                                  className="border-t border-navy-800 hover:bg-navy-850/50"
+                                >
+                                  <td className="px-3 py-1.5 text-slate-300 font-mono">
+                                    {row.month}
+                                  </td>
+                                  <td className="px-3 py-1.5 text-right text-slate-300 font-mono">
+                                    {formatCurrency(row.payment)}
+                                  </td>
+                                  <td className="px-3 py-1.5 text-right text-green-400 font-mono">
+                                    {formatCurrency(row.principal)}
+                                  </td>
+                                  <td className="px-3 py-1.5 text-right text-red-400 font-mono">
+                                    {formatCurrency(row.interest)}
+                                  </td>
+                                  <td className="px-3 py-1.5 text-right text-slate-300 font-mono">
+                                    {formatCurrency(row.balance)}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+
+                      {isExpanded && !projection && (
+                        <p className="mt-2 text-xs text-slate-500">No projection data available.</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
         </div>
       )}
 
+      {/* Add/Edit Debt Modal */}
       <Modal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
@@ -980,6 +968,64 @@ export default function DebtPayoff() {
             {editing ? 'Save Changes' : 'Add Debt'}
           </button>
         </form>
+      </Modal>
+
+      {/* Group Create/Rename Modal */}
+      <Modal
+        open={groupModalOpen}
+        onClose={() => setGroupModalOpen(false)}
+        title={editingGroup ? 'Rename Group' : 'New Group'}
+      >
+        <form onSubmit={handleGroupSubmit} className="flex flex-col gap-4">
+          <input
+            type="text"
+            placeholder="Group name"
+            value={groupName}
+            onChange={(e) => setGroupName(e.target.value)}
+            className={inputClass}
+            required
+            maxLength={100}
+          />
+          <button
+            type="submit"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+          >
+            {editingGroup ? 'Rename' : 'Create Group'}
+          </button>
+        </form>
+      </Modal>
+
+      {/* Manage Group Members Modal */}
+      <Modal
+        open={!!managingGroup}
+        onClose={() => setManagingGroup(null)}
+        title={managingGroup ? `Manage: ${managingGroup.name}` : 'Manage Members'}
+      >
+        <div className="space-y-2 mb-4">
+          {sortedDebts.map((debt) => (
+            <label
+              key={debt.id}
+              className="flex items-center gap-3 py-2 px-2 rounded-lg hover:bg-navy-850 cursor-pointer select-none"
+            >
+              <input
+                type="checkbox"
+                checked={memberSelection.has(debt.id)}
+                onChange={() => toggleMember(debt.id)}
+                className="w-4 h-4 accent-emerald-500"
+              />
+              <span className="text-sm text-slate-300">{getAccountName(debt.account_id)}</span>
+              <span className="text-xs text-slate-500 font-mono ml-auto">
+                {formatCurrency(debt.current_balance)}
+              </span>
+            </label>
+          ))}
+        </div>
+        <button
+          onClick={saveMembers}
+          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+        >
+          Save Members
+        </button>
       </Modal>
     </div>
   )

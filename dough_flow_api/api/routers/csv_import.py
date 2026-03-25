@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.database import get_db
 from api.dependencies import get_current_user
+from api.models.category import Category
 from api.models.csv_mapping import CSVMapping
 from api.models.transaction import Transaction, TransactionSource, TransactionType
 from api.models.user import User
@@ -114,10 +115,16 @@ async def confirm_import(
     imported = 0
     skipped = 0
 
+    # Build category name -> id lookup for the current user
+    cat_result = await db.execute(select(Category).where(Category.user_id == current_user.id))
+    category_by_name: dict[str, uuid.UUID] = {cat.name.lower(): cat.id for cat in cat_result.scalars().all()}
+
     for row in data.rows:
         if row.is_duplicate:
             skipped += 1
             continue
+
+        resolved_category_id = category_by_name.get(row.category_name.lower()) if row.category_name else None
 
         if row.link_transfer_id:
             # Link as a transfer pair
@@ -131,6 +138,7 @@ async def confirm_import(
                 type=TransactionType.TRANSFER,
                 source=TransactionSource.CSV_IMPORT,
                 transfer_id=shared_transfer_id,
+                category_id=resolved_category_id,
             )
             db.add(txn)
 
@@ -155,6 +163,7 @@ async def confirm_import(
                 description=row.description,
                 type=txn_type,
                 source=TransactionSource.CSV_IMPORT,
+                category_id=resolved_category_id,
             )
             db.add(txn)
         imported += 1

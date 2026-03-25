@@ -110,6 +110,13 @@ export interface GrowthProjection {
   final_balance: number
 }
 
+export interface DebtGroup {
+  id: string
+  name: string
+  debt_ids: string[]
+  created_at: string
+}
+
 export interface DebtGroupSummary {
   debt_ids: string[]
   total_principal: number
@@ -117,13 +124,6 @@ export interface DebtGroupSummary {
   weighted_interest_rate: number
   total_minimum_payment: number
   debt_count: number
-}
-
-export interface DebtGroup {
-  id: string
-  name: string
-  debt_ids: string[]
-  created_at: string
 }
 
 export interface Budget {

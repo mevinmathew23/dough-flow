@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../api/client'
 import { useCurrency } from '../contexts/CurrencyContext'
-import { Account, CSVMapping, CSVPreviewResponse, CSVPreviewRow } from '../types'
+import { Account, Category, CSVMapping, CSVPreviewResponse, CSVPreviewRow } from '../types'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -121,6 +121,7 @@ export default function CsvImport() {
   // Shared state
   const [step, setStep] = useState<WizardStep>(1)
   const [accounts, setAccounts] = useState<Account[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
   const [savedMappings, setSavedMappings] = useState<CSVMapping[]>([])
 
   // Step 1
@@ -144,6 +145,7 @@ export default function CsvImport() {
   const [institutionName, setInstitutionName] = useState('')
   const [dateTolerance, setDateTolerance] = useState(5)
   const [transferLinks, setTransferLinks] = useState<Record<number, boolean>>({})
+  const [categoryOverrides, setCategoryOverrides] = useState<Record<number, string>>({})
 
   // Step 4 (confirm result)
   const [confirmResult, setConfirmResult] = useState<{
@@ -162,12 +164,14 @@ export default function CsvImport() {
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        const [accountsRes, mappingsRes] = await Promise.all([
+        const [accountsRes, mappingsRes, categoriesRes] = await Promise.all([
           api.get<Account[]>('/accounts'),
           api.get<CSVMapping[]>('/csv/mappings'),
+          api.get<Category[]>('/categories'),
         ])
         setAccounts(accountsRes.data)
         setSavedMappings(mappingsRes.data)
+        setCategories(categoriesRes.data)
         if (accountsRes.data.length > 0) {
           setSelectedAccountId(accountsRes.data[0].id)
         }
@@ -339,8 +343,11 @@ export default function CsvImport() {
       const rowsWithTransferLinks = rowsToImport.map((row) => {
         const originalIdx = previewData.rows.indexOf(row)
         const shouldLink = transferLinks[originalIdx] && row.transfer_match
+        const overriddenCategory = categoryOverrides[originalIdx]
         return {
           ...row,
+          category_name:
+            overriddenCategory !== undefined ? overriddenCategory || null : row.category_name,
           link_transfer_id: shouldLink ? row.transfer_match!.transaction_id : null,
         }
       })
@@ -380,6 +387,7 @@ export default function CsvImport() {
     setInstitutionName('')
     setConfirmResult(null)
     setTransferLinks({})
+    setCategoryOverrides({})
     setDateTolerance(5)
     setError('')
     if (fileInputRef.current) {
@@ -573,7 +581,20 @@ export default function CsvImport() {
         >
           {formatCurrency(row.amount)}
         </td>
-        <td className="px-4 py-2 text-sm text-slate-400">{row.category_name ?? '—'}</td>
+        <td className="px-4 py-2">
+          <select
+            value={categoryOverrides[idx] ?? row.category_name ?? ''}
+            onChange={(e) => setCategoryOverrides((prev) => ({ ...prev, [idx]: e.target.value }))}
+            className="bg-navy-850 border border-navy-750 rounded px-2 py-1 text-sm text-slate-300 focus:outline-none focus:border-emerald-500 w-full"
+          >
+            <option value="">No category</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.name}>
+                {c.icon} {c.name}
+              </option>
+            ))}
+          </select>
+        </td>
         <td className="px-4 py-2">
           {isDuplicate && (
             <span className="text-xs bg-yellow-900/60 text-yellow-400 px-2 py-0.5 rounded-full">
