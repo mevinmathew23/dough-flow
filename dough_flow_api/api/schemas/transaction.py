@@ -2,7 +2,7 @@ import uuid
 from datetime import date as date_type
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from api.models.transaction import TransactionSource, TransactionType
 
@@ -51,3 +51,12 @@ class BulkDeleteRequest(BaseModel):
 
 class BulkDeleteResponse(BaseModel):
     deleted_count: int
+
+
+class BulkUpdateTypeRequest(BaseModel):
+    transaction_ids: list[uuid.UUID] = Field(min_length=1)
+    type: TransactionType
+
+
+class BulkUpdateTypeResponse(BaseModel):
+    updated_count: int
