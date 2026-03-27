@@ -8,6 +8,7 @@ from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from api.database import Base
+from api.services.category_resolver import CategoryMappingDict
 
 if TYPE_CHECKING:
     from api.models.user import User
@@ -21,7 +22,7 @@ class CSVMapping(Base):
     institution_name: Mapped[str] = mapped_column(String(255))
     column_mapping: Mapped[dict[str, str]] = mapped_column(JSON)
     date_format: Mapped[str] = mapped_column(String(50), default="%m/%d/%Y")
-    category_mapping: Mapped[dict[str, list[dict[str, str]]] | None] = mapped_column(JSON, nullable=True, default=None)
+    category_mapping: Mapped[CategoryMappingDict | None] = mapped_column(JSON, nullable=True, default=None)
     is_default: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 

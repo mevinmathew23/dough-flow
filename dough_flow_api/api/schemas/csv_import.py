@@ -3,6 +3,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
+from api.services.category_resolver import CategoryMappingDict
+
 
 class CategoryMappingEntry(BaseModel):
     source: str
@@ -34,7 +36,7 @@ class CSVMappingResponse(BaseModel):
     @field_validator("category_mapping", mode="before")
     @classmethod
     def parse_category_mapping(
-        cls, v: dict[str, list[dict[str, str]]] | InstitutionCategoryMapping | None
+        cls, v: CategoryMappingDict | InstitutionCategoryMapping | None
     ) -> InstitutionCategoryMapping | None:
         if v is None:
             return None

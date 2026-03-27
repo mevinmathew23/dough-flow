@@ -199,7 +199,7 @@ async def confirm_import(
 
     # Auto-save category overrides to institution mapping
     if data.mapping_id:
-        overrides: list[dict[str, str]] = []
+        overrides: list[CategoryMappingEntryDict] = []
         for row in data.rows:
             if (
                 row.category_name
@@ -207,7 +207,7 @@ async def confirm_import(
                 and row.category_name.lower() != row.resolved_category_name.lower()
                 and row.match_method in ("fuzzy", "unmatched")
             ):
-                overrides.append({"source": row.category_name, "target": row.resolved_category_name})
+                overrides.append(CategoryMappingEntryDict(source=row.category_name, target=row.resolved_category_name))
 
         if overrides:
             mapping_result = await db.execute(select(CSVMapping).where(CSVMapping.id == data.mapping_id))
