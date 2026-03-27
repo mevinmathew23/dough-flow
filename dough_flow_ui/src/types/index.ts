@@ -6,7 +6,7 @@ export interface User {
   created_at: string
 }
 
-export type AccountType = 'checking' | 'savings' | 'credit' | 'investment' | 'loan'
+export type AccountType = 'checking' | 'savings' | 'credit' | 'investment' | 'loan' | 'retirement'
 
 export interface Account {
   id: string

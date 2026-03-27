@@ -22,6 +22,7 @@ class AccountType(str, enum.Enum):
     CREDIT = "credit"
     INVESTMENT = "investment"
     LOAN = "loan"
+    RETIREMENT = "retirement"
 
 
 class Account(Base):

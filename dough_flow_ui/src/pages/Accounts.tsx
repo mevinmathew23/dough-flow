@@ -5,7 +5,14 @@ import MoneyInput from '../components/MoneyInput'
 import { useCurrency } from '../contexts/CurrencyContext'
 import { Account, AccountType, CompoundingFrequency } from '../types'
 
-const ACCOUNT_TYPES: AccountType[] = ['checking', 'savings', 'credit', 'investment', 'loan']
+const ACCOUNT_TYPES: AccountType[] = [
+  'checking',
+  'savings',
+  'credit',
+  'investment',
+  'loan',
+  'retirement',
+]
 
 const COMPOUNDING_OPTIONS: CompoundingFrequency[] = [
   'daily',
@@ -35,6 +42,7 @@ const TYPE_LABELS: Record<AccountType, string> = {
   credit: 'Credit',
   investment: 'Investment',
   loan: 'Loan',
+  retirement: 'Retirement',
 }
 
 const TYPE_COLORS: Record<AccountType, string> = {
@@ -43,6 +51,7 @@ const TYPE_COLORS: Record<AccountType, string> = {
   credit: 'bg-red-500/10 text-red-400',
   investment: 'bg-purple-500/10 text-purple-400',
   loan: 'bg-orange-500/10 text-orange-400',
+  retirement: 'bg-teal-500/10 text-teal-400',
 }
 
 function isDebtType(type: AccountType): boolean {
