@@ -7,11 +7,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.database import get_db
 from api.dependencies import get_current_user
+from api.helpers import apply_update, delete_entity, get_or_404
 from api.models.account import Account
 from api.models.transaction import Transaction, TransactionType
 from api.models.user import User
 from api.schemas.transaction import (
     BulkCategorizeRequest,
+    BulkCategorizeResponse,
     BulkDeleteRequest,
     BulkDeleteResponse,
     BulkUpdateTypeRequest,
@@ -80,13 +82,7 @@ async def get_transaction(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Transaction:
-    result = await db.execute(
-        select(Transaction).where(Transaction.id == transaction_id, Transaction.user_id == current_user.id)
-    )
-    txn = result.scalar_one_or_none()
-    if txn is None:
-        raise HTTPException(status_code=404, detail="Transaction not found")
-    return txn
+    return await get_or_404(db, Transaction, transaction_id, current_user.id, "Transaction not found")
 
 
 @router.patch("/{transaction_id}", response_model=TransactionResponse)
@@ -96,16 +92,8 @@ async def update_transaction(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Transaction:
-    result = await db.execute(
-        select(Transaction).where(Transaction.id == transaction_id, Transaction.user_id == current_user.id)
-    )
-    txn = result.scalar_one_or_none()
-    if txn is None:
-        raise HTTPException(status_code=404, detail="Transaction not found")
-    for field, value in data.model_dump(exclude_unset=True).items():
-        setattr(txn, field, value)
-    await db.commit()
-    await db.refresh(txn)
+    txn = await get_or_404(db, Transaction, transaction_id, current_user.id, "Transaction not found")
+    await apply_update(db, txn, data)
     return txn
 
 
@@ -115,14 +103,7 @@ async def delete_transaction(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> None:
-    result = await db.execute(
-        select(Transaction).where(Transaction.id == transaction_id, Transaction.user_id == current_user.id)
-    )
-    txn = result.scalar_one_or_none()
-    if txn is None:
-        raise HTTPException(status_code=404, detail="Transaction not found")
-    await db.delete(txn)
-    await db.commit()
+    await delete_entity(db, Transaction, transaction_id, current_user.id, "Transaction not found")
 
 
 @router.post("/bulk-delete", response_model=BulkDeleteResponse)
@@ -135,17 +116,17 @@ async def bulk_delete(
     return BulkDeleteResponse(deleted_count=deleted_count)
 
 
-@router.post("/bulk-categorize")
+@router.post("/bulk-categorize", response_model=BulkCategorizeResponse)
 async def bulk_categorize(
     data: BulkCategorizeRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> dict[str, int]:
+) -> BulkCategorizeResponse:
     try:
         updated_count = await bulk_categorize_transactions(db, current_user.id, data.transaction_ids, data.category_id)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
-    return {"updated_count": updated_count}
+    return BulkCategorizeResponse(updated_count=updated_count)
 
 
 @router.post("/bulk-update-type", response_model=BulkUpdateTypeResponse)

@@ -1,15 +1,16 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.database import get_db
 from api.dependencies import get_current_user
-from api.models.account import Account, AccountType
-from api.models.debt import CompoundingFrequency, Debt
+from api.helpers import apply_update, delete_entity, get_or_404
+from api.models.account import Account
 from api.models.user import User
 from api.schemas.account import AccountCreate, AccountResponse, AccountUpdate
+from api.services.account_service import create_account_with_debt
 
 router = APIRouter(prefix="/api/accounts", tags=["accounts"])
 
@@ -20,31 +21,7 @@ async def create_account(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Account:
-    account_data = data.model_dump(exclude={"minimum_payment", "compounding_frequency"})
-    account = Account(**account_data, user_id=current_user.id)
-    db.add(account)
-
-    if data.type in (AccountType.CREDIT, AccountType.LOAN):
-        # Flush to generate account.id without committing, then attach debt in the same transaction
-        await db.flush()
-        debt = Debt(
-            account_id=account.id,
-            user_id=current_user.id,
-            principal_amount=abs(data.balance) if data.balance else 0,
-            current_balance=abs(data.balance) if data.balance else 0,
-            interest_rate=data.interest_rate or 0,
-            minimum_payment=data.minimum_payment or 0,
-            compounding_frequency=(
-                CompoundingFrequency(data.compounding_frequency)
-                if data.compounding_frequency
-                else CompoundingFrequency.MONTHLY
-            ),
-        )
-        db.add(debt)
-
-    await db.commit()
-    await db.refresh(account)
-    return account
+    return await create_account_with_debt(db, data, current_user.id)
 
 
 @router.get("", response_model=list[AccountResponse])
@@ -62,11 +39,7 @@ async def get_account(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Account:
-    result = await db.execute(select(Account).where(Account.id == account_id, Account.user_id == current_user.id))
-    account = result.scalar_one_or_none()
-    if account is None:
-        raise HTTPException(status_code=404, detail="Account not found")
-    return account
+    return await get_or_404(db, Account, account_id, current_user.id, "Account not found")
 
 
 @router.patch("/{account_id}", response_model=AccountResponse)
@@ -76,14 +49,8 @@ async def update_account(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Account:
-    result = await db.execute(select(Account).where(Account.id == account_id, Account.user_id == current_user.id))
-    account = result.scalar_one_or_none()
-    if account is None:
-        raise HTTPException(status_code=404, detail="Account not found")
-    for field, value in data.model_dump(exclude_unset=True).items():
-        setattr(account, field, value)
-    await db.commit()
-    await db.refresh(account)
+    account = await get_or_404(db, Account, account_id, current_user.id, "Account not found")
+    await apply_update(db, account, data)
     return account
 
 
@@ -93,9 +60,4 @@ async def delete_account(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> None:
-    result = await db.execute(select(Account).where(Account.id == account_id, Account.user_id == current_user.id))
-    account = result.scalar_one_or_none()
-    if account is None:
-        raise HTTPException(status_code=404, detail="Account not found")
-    await db.delete(account)
-    await db.commit()
+    await delete_entity(db, Account, account_id, current_user.id, "Account not found")

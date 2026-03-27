@@ -1,10 +1,21 @@
 import uuid
 from datetime import datetime
-from typing import Literal
+from typing import Literal, TypedDict
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
-from api.services.category_resolver import CategoryMappingDict
+
+class CategoryMappingEntryDict(TypedDict):
+    """TypedDict representing a single source-to-target category mapping entry."""
+
+    source: str
+    target: str
+
+
+class CategoryMappingDict(TypedDict):
+    """TypedDict representing the full institution category mapping payload."""
+
+    entries: list[CategoryMappingEntryDict]
 
 
 class CategoryMappingEntry(BaseModel):

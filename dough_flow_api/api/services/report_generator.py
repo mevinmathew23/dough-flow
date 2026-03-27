@@ -1,13 +1,34 @@
 import uuid
 from datetime import date
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models.account import Account
 from api.models.category import Category
 from api.models.transaction import Transaction, TransactionType
-from api.schemas.report import CategoryComparison, CategorySpending, MonthlySummary, NetWorth, TransferPair
+from api.schemas.report import (
+    CategoryComparison,
+    CategorySpending,
+    MonthlySummary,
+    NetWorth,
+    TransferPair,
+)
+from api.utils import first_of_next_month
+
+
+def _first_of_prior_month(d: date) -> date:
+    """Return the first day of the month before the given date.
+
+    Args:
+        d: Any date whose month should be decremented by one.
+
+    Returns:
+        A date representing the first day of the prior calendar month.
+    """
+    if d.month == 1:
+        return date(d.year - 1, 12, 1)
+    return date(d.year, d.month - 1, 1)
 
 
 async def get_monthly_summary(
@@ -15,11 +36,17 @@ async def get_monthly_summary(
     user_id: uuid.UUID,
     month: date,
 ) -> MonthlySummary:
-    """Get income, expense, and savings for a given month."""
-    if month.month == 12:
-        next_month = date(month.year + 1, 1, 1)
-    else:
-        next_month = date(month.year, month.month + 1, 1)
+    """Get income, expense, and savings for a given month.
+
+    Args:
+        db: Async database session.
+        user_id: Owner's user id for scoping.
+        month: First day of the target month.
+
+    Returns:
+        MonthlySummary with income, expenses, savings, rate, and payments.
+    """
+    next_month = first_of_next_month(month)
 
     # Total income
     income_result = await db.execute(
@@ -78,11 +105,17 @@ async def get_category_breakdown(
     user_id: uuid.UUID,
     month: date,
 ) -> list[CategorySpending]:
-    """Get spending by category for a given month."""
-    if month.month == 12:
-        next_month = date(month.year + 1, 1, 1)
-    else:
-        next_month = date(month.year, month.month + 1, 1)
+    """Get spending by category for a given month.
+
+    Args:
+        db: Async database session.
+        user_id: Owner's user id for scoping.
+        month: First day of the target month.
+
+    Returns:
+        List of CategorySpending ordered by total descending.
+    """
+    next_month = first_of_next_month(month)
 
     result = await db.execute(
         select(
@@ -120,25 +153,93 @@ async def get_income_vs_expense_trend(
     user_id: uuid.UUID,
     months: int = 6,
 ) -> list[MonthlySummary]:
-    """Get monthly income vs expense for the last N months."""
+    """Get monthly income vs expense for the last N months.
+
+    Uses a single query grouped by month to avoid N+1 queries per month.
+
+    Args:
+        db: Async database session.
+        user_id: Owner's user id for scoping.
+        months: Number of calendar months to include (most recent first).
+
+    Returns:
+        List of MonthlySummary in chronological order.
+    """
     today = date.today()
-    # Start from the first day of (months-1) months ago
     start_month = date(today.year, today.month, 1)
     for _ in range(months - 1):
-        if start_month.month == 1:
-            start_month = date(start_month.year - 1, 12, 1)
-        else:
-            start_month = date(start_month.year, start_month.month - 1, 1)
+        start_month = _first_of_prior_month(start_month)
 
-    trend = []
+    end_date = first_of_next_month(date(today.year, today.month, 1))
+
+    # SQLite-compatible month truncation; production PostgreSQL also supports strftime
+    month_label = func.strftime("%Y-%m-01", Transaction.date)
+
+    result = await db.execute(
+        select(
+            month_label.label("month_str"),
+            func.coalesce(
+                func.sum(
+                    case(
+                        (Transaction.type == TransactionType.INCOME, Transaction.amount),
+                        else_=0,
+                    )
+                ),
+                0,
+            ).label("income"),
+            func.coalesce(
+                func.sum(
+                    case(
+                        (Transaction.type == TransactionType.EXPENSE, func.abs(Transaction.amount)),
+                        else_=0,
+                    )
+                ),
+                0,
+            ).label("expenses"),
+            func.coalesce(
+                func.sum(
+                    case(
+                        (Transaction.type == TransactionType.PAYMENT, func.abs(Transaction.amount)),
+                        else_=0,
+                    )
+                ),
+                0,
+            ).label("payments"),
+        )
+        .where(
+            and_(
+                Transaction.user_id == user_id,
+                Transaction.date >= start_month,
+                Transaction.date < end_date,
+                Transaction.type.in_([TransactionType.INCOME, TransactionType.EXPENSE, TransactionType.PAYMENT]),
+            )
+        )
+        .group_by(month_label)
+        .order_by(month_label)
+    )
+    rows_by_month: dict[str, tuple[float, float, float]] = {
+        row.month_str: (float(row.income), float(row.expenses), float(row.payments)) for row in result.all()
+    }
+
+    # Build full month list, filling in zeros for months with no transactions
+    trend: list[MonthlySummary] = []
     current = start_month
     for _ in range(months):
-        summary = await get_monthly_summary(db, user_id, current)
-        trend.append(summary)
-        if current.month == 12:
-            current = date(current.year + 1, 1, 1)
-        else:
-            current = date(current.year, current.month + 1, 1)
+        key = current.isoformat()  # "YYYY-MM-01"
+        income, expenses, payments = rows_by_month.get(key, (0.0, 0.0, 0.0))
+        savings = income - expenses
+        savings_rate = round((savings / income) * 100, 1) if income > 0 else 0.0
+        trend.append(
+            MonthlySummary(
+                month=key,
+                income=round(income, 2),
+                expenses=round(expenses, 2),
+                savings=round(savings, 2),
+                savings_rate=savings_rate,
+                payments=round(payments, 2),
+            )
+        )
+        current = first_of_next_month(current)
 
     return trend
 
@@ -147,7 +248,15 @@ async def get_net_worth(
     db: AsyncSession,
     user_id: uuid.UUID,
 ) -> NetWorth:
-    """Calculate net worth from all accounts."""
+    """Calculate net worth from all accounts.
+
+    Args:
+        db: Async database session.
+        user_id: Owner's user id for scoping.
+
+    Returns:
+        NetWorth with total balance across all accounts.
+    """
     result = await db.execute(
         select(
             func.coalesce(func.sum(Account.balance), 0),
@@ -162,14 +271,18 @@ async def get_category_comparison(
     user_id: uuid.UUID,
     month: date,
 ) -> list[CategoryComparison]:
-    """Get category spending for current month vs prior month with % change."""
-    current = await get_category_breakdown(db, user_id, month)
+    """Get category spending for current month vs prior month with % change.
 
-    # Calculate prior month
-    if month.month == 1:
-        prior_month = date(month.year - 1, 12, 1)
-    else:
-        prior_month = date(month.year, month.month - 1, 1)
+    Args:
+        db: Async database session.
+        user_id: Owner's user id for scoping.
+        month: First day of the target month.
+
+    Returns:
+        List of CategoryComparison entries for all categories with current spending.
+    """
+    current = await get_category_breakdown(db, user_id, month)
+    prior_month = _first_of_prior_month(month)
     prior = await get_category_breakdown(db, user_id, prior_month)
 
     prior_map = {item.category_id: item.total for item in prior}
@@ -196,11 +309,17 @@ async def get_transfers(
     user_id: uuid.UUID,
     month: date,
 ) -> list[TransferPair]:
-    """Get transfer pairs for a given month."""
-    if month.month == 12:
-        next_month = date(month.year + 1, 1, 1)
-    else:
-        next_month = date(month.year, month.month + 1, 1)
+    """Get transfer pairs for a given month.
+
+    Args:
+        db: Async database session.
+        user_id: Owner's user id for scoping.
+        month: First day of the target month.
+
+    Returns:
+        List of TransferPair entries representing matched transfer transactions.
+    """
+    next_month = first_of_next_month(month)
 
     result = await db.execute(
         select(Transaction, Account.name.label("account_name"))

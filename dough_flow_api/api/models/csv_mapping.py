@@ -8,7 +8,7 @@ from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from api.database import Base
-from api.services.category_resolver import CategoryMappingDict
+from api.schemas.csv_import import CategoryMappingDict
 
 if TYPE_CHECKING:
     from api.models.user import User

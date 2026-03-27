@@ -1,6 +1,5 @@
 import uuid
 
-from fastapi import HTTPException
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -10,6 +9,16 @@ from api.models.debt_group import DebtGroup, debt_group_members
 
 
 async def create_group(db: AsyncSession, user_id: uuid.UUID, name: str) -> DebtGroup:
+    """Create a new debt group for the given user.
+
+    Args:
+        db: Async database session.
+        user_id: Owner's user id.
+        name: Display name for the group.
+
+    Returns:
+        The newly created DebtGroup instance.
+    """
     group = DebtGroup(user_id=user_id, name=name)
     db.add(group)
     await db.commit()
@@ -18,6 +27,15 @@ async def create_group(db: AsyncSession, user_id: uuid.UUID, name: str) -> DebtG
 
 
 async def list_groups(db: AsyncSession, user_id: uuid.UUID) -> list[DebtGroup]:
+    """List all debt groups belonging to the given user.
+
+    Args:
+        db: Async database session.
+        user_id: Owner's user id.
+
+    Returns:
+        All DebtGroup instances for the user, ordered by creation time.
+    """
     result = await db.execute(
         select(DebtGroup)
         .where(DebtGroup.user_id == user_id)
@@ -28,6 +46,19 @@ async def list_groups(db: AsyncSession, user_id: uuid.UUID) -> list[DebtGroup]:
 
 
 async def get_group(db: AsyncSession, user_id: uuid.UUID, group_id: uuid.UUID) -> DebtGroup:
+    """Fetch a single debt group by id, raising ValueError if not found.
+
+    Args:
+        db: Async database session.
+        user_id: Owner's user id for scoping.
+        group_id: Primary key of the debt group.
+
+    Returns:
+        The matching DebtGroup instance with debts loaded.
+
+    Raises:
+        ValueError: If the group does not exist or is not owned by user.
+    """
     result = await db.execute(
         select(DebtGroup)
         .where(DebtGroup.id == group_id, DebtGroup.user_id == user_id)
@@ -35,7 +66,7 @@ async def get_group(db: AsyncSession, user_id: uuid.UUID, group_id: uuid.UUID) -
     )
     group = result.scalar_one_or_none()
     if group is None:
-        raise HTTPException(status_code=404, detail="Debt group not found")
+        raise ValueError("Debt group not found")
     return group
 
 
@@ -45,6 +76,20 @@ async def update_group(
     group_id: uuid.UUID,
     name: str | None,
 ) -> DebtGroup:
+    """Rename a debt group.
+
+    Args:
+        db: Async database session.
+        user_id: Owner's user id for scoping.
+        group_id: Primary key of the debt group.
+        name: New name, or None to leave unchanged.
+
+    Returns:
+        The updated DebtGroup instance.
+
+    Raises:
+        ValueError: If the group does not exist or is not owned by user.
+    """
     group = await get_group(db, user_id, group_id)
     if name is not None:
         group.name = name
@@ -53,6 +98,16 @@ async def update_group(
 
 
 async def delete_group(db: AsyncSession, user_id: uuid.UUID, group_id: uuid.UUID) -> None:
+    """Delete a debt group.
+
+    Args:
+        db: Async database session.
+        user_id: Owner's user id for scoping.
+        group_id: Primary key of the debt group to delete.
+
+    Raises:
+        ValueError: If the group does not exist or is not owned by user.
+    """
     group = await get_group(db, user_id, group_id)
     await db.delete(group)
     await db.commit()
@@ -64,6 +119,21 @@ async def set_group_debts(
     group_id: uuid.UUID,
     debt_ids: list[uuid.UUID],
 ) -> DebtGroup:
+    """Replace the debt membership of a group.
+
+    Args:
+        db: Async database session.
+        user_id: Owner's user id for scoping.
+        group_id: Primary key of the debt group.
+        debt_ids: Full list of debt ids to assign to the group.
+
+    Returns:
+        The updated DebtGroup instance with refreshed debt membership.
+
+    Raises:
+        ValueError: If the group does not exist, is not owned by user, or any
+            debt_id is invalid or not owned by user.
+    """
     group = await get_group(db, user_id, group_id)
 
     # Validate all debt_ids belong to user
@@ -72,7 +142,7 @@ async def set_group_debts(
         valid_ids = {row[0] for row in result.all()}
         invalid = set(debt_ids) - valid_ids
         if invalid:
-            raise HTTPException(status_code=400, detail="Some debt IDs are invalid or not owned by user")
+            raise ValueError("Some debt IDs are invalid or not owned by user")
 
     # Clear existing membership
     await db.execute(delete(debt_group_members).where(debt_group_members.c.debt_group_id == group_id))

@@ -1,8 +1,29 @@
 import { format } from 'date-fns'
 import { useEffect, useState } from 'react'
-import api from '../api/client'
+import { fetchAccounts } from '../api/accounts'
+import {
+  createDebt,
+  deleteDebt,
+  fetchDebts,
+  fetchDebtGroupSummary,
+  fetchPayoffSummary,
+  updateDebt,
+} from '../api/debts'
+import {
+  createDebtGroup,
+  deleteDebtGroup,
+  fetchDebtGroups,
+  updateDebtGroup,
+  updateDebtGroupMembers,
+} from '../api/debtGroups'
+import ConfirmDialog from '../components/ConfirmDialog'
+import ErrorAlert from '../components/ErrorAlert'
 import Modal from '../components/Modal'
+import PageLoader from '../components/PageLoader'
+import { COMPOUNDING_LABELS, COMPOUNDING_OPTIONS } from '../constants/finance'
+import { inputClass } from '../constants/styles'
 import { useCurrency } from '../contexts/CurrencyContext'
+import useFetch from '../hooks/useFetch'
 import {
   Account,
   CompoundingFrequency,
@@ -13,28 +34,6 @@ import {
 } from '../types'
 
 const STORAGE_KEY = 'doughflow:payoff-selection'
-
-const COMPOUNDING_FREQUENCIES: CompoundingFrequency[] = [
-  'daily',
-  'weekly',
-  'biweekly',
-  'monthly',
-  'bimonthly',
-  'quarterly',
-  'semiannually',
-  'annually',
-]
-
-const FREQUENCY_LABELS: Record<CompoundingFrequency, string> = {
-  daily: 'Daily',
-  weekly: 'Weekly',
-  biweekly: 'Bi-Weekly',
-  monthly: 'Monthly',
-  bimonthly: 'Bi-Monthly',
-  quarterly: 'Quarterly',
-  semiannually: 'Semi-Annually',
-  annually: 'Annually',
-}
 
 function formatPercent(rate: number): string {
   return `${(rate * 100).toFixed(2)}%`
@@ -53,24 +52,45 @@ const emptyForm = {
 
 export default function DebtPayoff() {
   const { formatCurrency } = useCurrency()
-  const [debts, setDebts] = useState<Debt[]>([])
-  const [accounts, setAccounts] = useState<Account[]>([])
-  const [groupSummary, setGroupSummary] = useState<DebtGroupSummary | null>(null)
-  const [loading, setLoading] = useState(true)
+
+  // Data fetching
+  const {
+    data: debtsData,
+    loading,
+    error: fetchError,
+    refetch: refetchDebts,
+  } = useFetch(fetchDebts)
+  const { data: accountsData, refetch: refetchAccounts } = useFetch(fetchAccounts)
+  const { data: groupSummaryData, refetch: refetchGroupSummary } = useFetch(fetchDebtGroupSummary)
+  const { data: groupsData, refetch: refetchGroups } = useFetch(fetchDebtGroups)
+
+  const debts: Debt[] = debtsData ?? []
+  const accounts: Account[] = accountsData ?? []
+  const groupSummary: DebtGroupSummary | null = groupSummaryData ?? null
+  const groups: DebtGroup[] = groupsData ?? []
+
   const [error, setError] = useState('')
 
+  const refetchAll = () => {
+    refetchDebts()
+    refetchAccounts()
+    refetchGroupSummary()
+    refetchGroups()
+  }
+
+  // Modal state
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Debt | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [formError, setFormError] = useState('')
 
+  // Simulator
   const [extraMonthly, setExtraMonthly] = useState(0)
   const [payoffSummary, setPayoffSummary] = useState<PayoffSummary | null>(null)
   const [expandedDebtId, setExpandedDebtId] = useState<string | null>(null)
   const [simulatorLoading, setSimulatorLoading] = useState(false)
 
-  // Debt groups
-  const [groups, setGroups] = useState<DebtGroup[]>([])
+  // Debt groups modals
   const [groupModalOpen, setGroupModalOpen] = useState(false)
   const [editingGroup, setEditingGroup] = useState<DebtGroup | null>(null)
   const [groupName, setGroupName] = useState('')
@@ -81,35 +101,14 @@ export default function DebtPayoff() {
   const [selectedDebtIds, setSelectedDebtIds] = useState<Set<string>>(new Set())
   const [selectionInitialized, setSelectionInitialized] = useState(false)
 
+  // Confirm dialogs
+  const [confirmDebtTarget, setConfirmDebtTarget] = useState<string | null>(null)
+  const [confirmGroupTarget, setConfirmGroupTarget] = useState<string | null>(null)
+
   // -------------------------------------------------------------------------
-  // Data fetching
+  // Selection initialization & persistence
   // -------------------------------------------------------------------------
 
-  const fetchAll = async () => {
-    try {
-      const [debtsRes, accountsRes, groupRes, groupsRes] = await Promise.all([
-        api.get('/debts'),
-        api.get('/accounts'),
-        api.get('/debts/grouped'),
-        api.get('/debt-groups'),
-      ])
-      setDebts(debtsRes.data)
-      setAccounts(accountsRes.data)
-      setGroupSummary(groupRes.data)
-      setGroups(groupsRes.data)
-      setError('')
-    } catch {
-      setError('Failed to load debt data')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchAll()
-  }, [])
-
-  // Initialize selection from localStorage once debts are loaded
   useEffect(() => {
     if (debts.length === 0 || selectionInitialized) return
     try {
@@ -126,38 +125,36 @@ export default function DebtPayoff() {
     } catch {
       // ignore parse errors
     }
-    // Default: all debts selected
     setSelectedDebtIds(new Set(debts.map((d) => d.id)))
     setSelectionInitialized(true)
   }, [debts, selectionInitialized])
 
-  // Save selection to localStorage whenever it changes
   useEffect(() => {
     if (!selectionInitialized) return
     localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(selectedDebtIds)))
   }, [selectedDebtIds, selectionInitialized])
 
-  // Fetch payoff whenever selection or debts change
   useEffect(() => {
     if (!selectionInitialized || selectedDebtIds.size === 0) {
       setPayoffSummary(null)
       return
     }
-    fetchPayoff(extraMonthly)
+    runFetchPayoff(extraMonthly)
   }, [selectionInitialized, selectedDebtIds]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const fetchPayoff = async (extra: number) => {
+  // -------------------------------------------------------------------------
+  // Payoff simulation
+  // -------------------------------------------------------------------------
+
+  const runFetchPayoff = async (extra: number) => {
     if (selectedDebtIds.size === 0) {
       setPayoffSummary(null)
       return
     }
     setSimulatorLoading(true)
     try {
-      const params = new URLSearchParams()
-      params.append('extra_monthly', String(extra))
-      selectedDebtIds.forEach((id) => params.append('debt_ids', id))
-      const res = await api.get(`/debts/payoff?${params.toString()}`)
-      setPayoffSummary(res.data)
+      const result = await fetchPayoffSummary(Array.from(selectedDebtIds), extra)
+      setPayoffSummary(result)
     } catch {
       // non-critical
     } finally {
@@ -166,7 +163,7 @@ export default function DebtPayoff() {
   }
 
   const handleExtraChange = (value: number) => {
-    fetchPayoff(value)
+    runFetchPayoff(value)
   }
 
   // -------------------------------------------------------------------------
@@ -210,15 +207,6 @@ export default function DebtPayoff() {
   // Group management
   // -------------------------------------------------------------------------
 
-  const fetchGroups = async () => {
-    try {
-      const res = await api.get('/debt-groups')
-      setGroups(res.data)
-    } catch {
-      setError('Failed to load debt groups')
-    }
-  }
-
   const openCreateGroup = () => {
     setEditingGroup(null)
     setGroupName('')
@@ -236,22 +224,21 @@ export default function DebtPayoff() {
     if (!groupName.trim()) return
     try {
       if (editingGroup) {
-        await api.patch(`/debt-groups/${editingGroup.id}`, { name: groupName.trim() })
+        await updateDebtGroup(editingGroup.id, groupName.trim())
       } else {
-        await api.post('/debt-groups', { name: groupName.trim() })
+        await createDebtGroup(groupName.trim())
       }
       setGroupModalOpen(false)
-      await fetchGroups()
+      refetchGroups()
     } catch {
       setError('Failed to save group')
     }
   }
 
   const handleDeleteGroup = async (groupId: string) => {
-    if (!confirm('Delete this group? The debts themselves will not be deleted.')) return
     try {
-      await api.delete(`/debt-groups/${groupId}`)
-      await fetchGroups()
+      await deleteDebtGroup(groupId)
+      refetchGroups()
     } catch {
       setError('Failed to delete group')
     }
@@ -274,11 +261,9 @@ export default function DebtPayoff() {
   const saveMembers = async () => {
     if (!managingGroup) return
     try {
-      await api.put(`/debt-groups/${managingGroup.id}/debts`, {
-        debt_ids: Array.from(memberSelection),
-      })
+      await updateDebtGroupMembers(managingGroup.id, Array.from(memberSelection))
       setManagingGroup(null)
-      await fetchGroups()
+      refetchGroups()
     } catch {
       setError('Failed to update group members')
     }
@@ -351,7 +336,7 @@ export default function DebtPayoff() {
 
     try {
       if (editing) {
-        await api.patch(`/debts/${editing.id}`, {
+        await updateDebt(editing.id, {
           current_balance: currentBalance,
           interest_rate: interestRate / 100,
           minimum_payment: minimumPayment,
@@ -365,7 +350,7 @@ export default function DebtPayoff() {
           setFormError('Principal amount must be a positive number')
           return
         }
-        await api.post('/debts', {
+        await createDebt({
           account_id: form.account_id,
           principal_amount: principalAmount,
           current_balance: currentBalance,
@@ -377,17 +362,16 @@ export default function DebtPayoff() {
         })
       }
       setModalOpen(false)
-      await fetchAll()
+      refetchAll()
     } catch {
       setFormError(editing ? 'Failed to update debt' : 'Failed to create debt')
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this debt? This cannot be undone.')) return
+  const handleDeleteDebt = async (id: string) => {
     try {
-      await api.delete(`/debts/${id}`)
-      await fetchAll()
+      await deleteDebt(id)
+      refetchAll()
     } catch {
       setError('Failed to delete debt')
     }
@@ -399,7 +383,6 @@ export default function DebtPayoff() {
 
   const sortedDebts = [...debts].sort((a, b) => a.priority_order - b.priority_order)
 
-  // Group subtotals for selected debts
   const getGroupSubtotal = (group: DebtGroup) => {
     const selectedGroupDebts = debts.filter(
       (d) => group.debt_ids.includes(d.id) && selectedDebtIds.has(d.id),
@@ -419,12 +402,7 @@ export default function DebtPayoff() {
     return { totalBalance, totalInterest, maxMonths, count: selectedGroupDebts.length }
   }
 
-  const inputClass =
-    'bg-navy-850 border border-navy-750 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-emerald-500 w-full'
-
-  if (loading) {
-    return <div className="text-slate-400">Loading debts...</div>
-  }
+  if (loading) return <PageLoader label="Loading debts..." />
 
   return (
     <div>
@@ -443,8 +421,8 @@ export default function DebtPayoff() {
         </button>
       </div>
 
-      {error && !modalOpen && !groupModalOpen && (
-        <p className="text-red-400 text-sm mb-4">{error}</p>
+      {(error || fetchError) && !modalOpen && !groupModalOpen && (
+        <ErrorAlert message={error || fetchError} />
       )}
 
       {debts.length > 0 && groupSummary && (
@@ -500,7 +478,6 @@ export default function DebtPayoff() {
             </div>
           </div>
 
-          {/* Groups */}
           {groups.length > 0 && (
             <div className="mb-4 space-y-2">
               <p className="text-xs text-slate-400 uppercase tracking-wider mb-2">Groups</p>
@@ -541,7 +518,7 @@ export default function DebtPayoff() {
                           Rename
                         </button>
                         <button
-                          onClick={() => handleDeleteGroup(group.id)}
+                          onClick={() => setConfirmGroupTarget(group.id)}
                           className="text-xs text-slate-400 hover:text-red-400 cursor-pointer"
                         >
                           Delete
@@ -554,7 +531,6 @@ export default function DebtPayoff() {
             </div>
           )}
 
-          {/* Individual debts */}
           <div className="space-y-1">
             <p className="text-xs text-slate-400 uppercase tracking-wider mb-2">Individual Debts</p>
             {sortedDebts.map((debt) => (
@@ -734,7 +710,7 @@ export default function DebtPayoff() {
                       </div>
                       <div className="text-xs text-slate-400 mt-0.5">
                         {debt.interest_rate > 0 && (
-                          <>{FREQUENCY_LABELS[debt.compounding_frequency]} compounding</>
+                          <>{COMPOUNDING_LABELS[debt.compounding_frequency]} compounding</>
                         )}
                         {debt.target_payoff_date && (
                           <span className={debt.interest_rate > 0 ? 'ml-2' : ''}>
@@ -752,7 +728,7 @@ export default function DebtPayoff() {
                         Edit
                       </button>
                       <button
-                        onClick={() => handleDelete(debt.id)}
+                        onClick={() => setConfirmDebtTarget(debt.id)}
                         className="text-slate-400 hover:text-red-400 text-sm cursor-pointer"
                       >
                         Delete
@@ -864,13 +840,37 @@ export default function DebtPayoff() {
         </div>
       )}
 
+      {/* Confirm delete debt */}
+      <ConfirmDialog
+        open={!!confirmDebtTarget}
+        title="Delete Debt"
+        message="Delete this debt? This cannot be undone."
+        onConfirm={async () => {
+          if (confirmDebtTarget) await handleDeleteDebt(confirmDebtTarget)
+          setConfirmDebtTarget(null)
+        }}
+        onCancel={() => setConfirmDebtTarget(null)}
+      />
+
+      {/* Confirm delete group */}
+      <ConfirmDialog
+        open={!!confirmGroupTarget}
+        title="Delete Group"
+        message="Delete this group? The debts themselves will not be deleted."
+        onConfirm={async () => {
+          if (confirmGroupTarget) await handleDeleteGroup(confirmGroupTarget)
+          setConfirmGroupTarget(null)
+        }}
+        onCancel={() => setConfirmGroupTarget(null)}
+      />
+
       {/* Add/Edit Debt Modal */}
       <Modal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         title={editing ? 'Edit Debt' : 'Add Debt'}
       >
-        {formError && <p className="text-red-400 text-sm mb-4">{formError}</p>}
+        <ErrorAlert message={formError} />
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           {!editing && (
             <select
@@ -938,9 +938,9 @@ export default function DebtPayoff() {
             }
             className={inputClass}
           >
-            {COMPOUNDING_FREQUENCIES.map((freq) => (
+            {COMPOUNDING_OPTIONS.map((freq) => (
               <option key={freq} value={freq}>
-                {FREQUENCY_LABELS[freq]}
+                {COMPOUNDING_LABELS[freq]}
               </option>
             ))}
           </select>

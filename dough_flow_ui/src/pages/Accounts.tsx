@@ -1,49 +1,21 @@
-import { useEffect, useState } from 'react'
-import api from '../api/client'
+import { useState } from 'react'
+import { createAccount, deleteAccount, fetchAccounts, updateAccount } from '../api/accounts'
+import ConfirmDialog from '../components/ConfirmDialog'
+import EmptyState from '../components/EmptyState'
+import ErrorAlert from '../components/ErrorAlert'
 import Modal from '../components/Modal'
 import MoneyInput from '../components/MoneyInput'
+import PageLoader from '../components/PageLoader'
+import {
+  ACCOUNT_TYPES,
+  COMPOUNDING_LABELS,
+  COMPOUNDING_OPTIONS,
+  TYPE_LABELS,
+} from '../constants/finance'
+import { inputClass } from '../constants/styles'
 import { useCurrency } from '../contexts/CurrencyContext'
+import useFetch from '../hooks/useFetch'
 import { Account, AccountType, CompoundingFrequency } from '../types'
-
-const ACCOUNT_TYPES: AccountType[] = [
-  'checking',
-  'savings',
-  'credit',
-  'investment',
-  'loan',
-  'retirement',
-]
-
-const COMPOUNDING_OPTIONS: CompoundingFrequency[] = [
-  'daily',
-  'weekly',
-  'biweekly',
-  'monthly',
-  'bimonthly',
-  'quarterly',
-  'semiannually',
-  'annually',
-]
-
-const COMPOUNDING_LABELS: Record<CompoundingFrequency, string> = {
-  daily: 'Daily',
-  weekly: 'Weekly',
-  biweekly: 'Biweekly',
-  monthly: 'Monthly',
-  bimonthly: 'Bimonthly',
-  quarterly: 'Quarterly',
-  semiannually: 'Semiannually',
-  annually: 'Annually',
-}
-
-const TYPE_LABELS: Record<AccountType, string> = {
-  checking: 'Checking',
-  savings: 'Savings',
-  credit: 'Credit',
-  investment: 'Investment',
-  loan: 'Loan',
-  retirement: 'Retirement',
-}
 
 const TYPE_COLORS: Record<AccountType, string> = {
   checking: 'bg-blue-500/10 text-blue-400',
@@ -64,8 +36,9 @@ function formatInterestDisplay(rate: number): string {
 
 export default function Accounts() {
   const { formatCurrency } = useCurrency()
-  const [accounts, setAccounts] = useState<Account[]>([])
-  const [loading, setLoading] = useState(true)
+  const { data: accounts, loading, error: fetchError, refetch } = useFetch(fetchAccounts)
+  const accountList = accounts ?? []
+
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Account | null>(null)
   const [form, setForm] = useState({
@@ -77,23 +50,10 @@ export default function Accounts() {
     minimumPayment: '',
     compoundingFrequency: '' as CompoundingFrequency | '',
   })
-  const [error, setError] = useState('')
+  const [formError, setFormError] = useState('')
+  const [confirmTarget, setConfirmTarget] = useState<string | null>(null)
 
-  const fetchAccounts = async () => {
-    try {
-      const res = await api.get('/accounts')
-      setAccounts(res.data)
-      setError('')
-    } catch {
-      setError('Failed to load accounts')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchAccounts()
-  }, [])
+  if (loading) return <PageLoader label="Loading accounts..." />
 
   const openCreate = () => {
     setEditing(null)
@@ -106,7 +66,7 @@ export default function Accounts() {
       minimumPayment: '',
       compoundingFrequency: '',
     })
-    setError('')
+    setFormError('')
     setModalOpen(true)
   }
 
@@ -121,16 +81,15 @@ export default function Accounts() {
       minimumPayment: '',
       compoundingFrequency: '',
     })
-    setError('')
+    setFormError('')
     setModalOpen(true)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
+    setFormError('')
 
     const interestRateDecimal = form.interest_rate ? parseFloat(form.interest_rate) / 100 : null
-
     const basePayload = {
       name: form.name,
       type: form.type,
@@ -141,7 +100,7 @@ export default function Accounts() {
 
     try {
       if (editing) {
-        await api.patch(`/accounts/${editing.id}`, {
+        await updateAccount(editing.id, {
           name: basePayload.name,
           institution: basePayload.institution,
           balance: basePayload.balance,
@@ -157,38 +116,21 @@ export default function Accounts() {
             createPayload.compounding_frequency = form.compoundingFrequency
           }
         }
-        await api.post('/accounts', createPayload)
+        await createAccount(createPayload)
       }
       setModalOpen(false)
-      await fetchAccounts()
+      refetch()
     } catch {
-      setError(editing ? 'Failed to update account' : 'Failed to create account')
-    }
-  }
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this account? This cannot be undone.')) return
-    try {
-      await api.delete(`/accounts/${id}`)
-      await fetchAccounts()
-    } catch {
-      setError('Failed to delete account')
+      setFormError(editing ? 'Failed to update account' : 'Failed to create account')
     }
   }
 
   const grouped = ACCOUNT_TYPES.map((type) => ({
     type,
-    accounts: accounts.filter((a) => a.type === type),
+    accounts: accountList.filter((a) => a.type === type),
   })).filter((g) => g.accounts.length > 0)
 
-  const totalBalance = accounts.reduce((sum, a) => sum + a.balance, 0)
-
-  if (loading) {
-    return <div className="text-slate-400">Loading accounts...</div>
-  }
-
-  const inputClass =
-    'bg-navy-850 border border-navy-750 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-emerald-500 w-full'
+  const totalBalance = accountList.reduce((sum, a) => sum + a.balance, 0)
 
   const interestLabel = isDebtType(form.type) ? 'APR (Interest Charged)' : 'APY (Interest Earned)'
   const interestColor = isDebtType(form.type) ? 'text-red-400' : 'text-green-400'
@@ -210,13 +152,10 @@ export default function Accounts() {
         </button>
       </div>
 
-      {error && !modalOpen && <p className="text-red-400 text-sm mb-4">{error}</p>}
+      {fetchError && !modalOpen && <ErrorAlert message={fetchError} />}
 
-      {accounts.length === 0 ? (
-        <div className="text-center py-16 text-slate-400">
-          <p className="text-lg mb-2">No accounts yet</p>
-          <p className="text-sm">Add your first account to get started.</p>
-        </div>
+      {accountList.length === 0 ? (
+        <EmptyState title="No accounts yet" subtitle="Add your first account to get started." />
       ) : (
         <div className="space-y-6">
           {grouped.map(({ type, accounts: groupAccounts }) => (
@@ -264,7 +203,7 @@ export default function Accounts() {
                         Edit
                       </button>
                       <button
-                        onClick={() => handleDelete(account.id)}
+                        onClick={() => setConfirmTarget(account.id)}
                         className="text-slate-400 hover:text-red-400 text-sm cursor-pointer"
                       >
                         Delete
@@ -278,12 +217,24 @@ export default function Accounts() {
         </div>
       )}
 
+      <ConfirmDialog
+        open={!!confirmTarget}
+        title="Delete Account"
+        message="Delete this account? This cannot be undone."
+        onConfirm={async () => {
+          if (confirmTarget) await deleteAccount(confirmTarget)
+          setConfirmTarget(null)
+          refetch()
+        }}
+        onCancel={() => setConfirmTarget(null)}
+      />
+
       <Modal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         title={editing ? 'Edit Account' : 'Add Account'}
       >
-        {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
+        <ErrorAlert message={formError} />
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <input
             type="text"

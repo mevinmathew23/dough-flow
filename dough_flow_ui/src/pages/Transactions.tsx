@@ -1,8 +1,24 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { format } from 'date-fns'
-import api from '../api/client'
+import {
+  bulkCategorizeTransactions,
+  bulkDeleteTransactions,
+  bulkUpdateTransactionType,
+  createTransaction,
+  deleteTransaction,
+  fetchTransactions,
+  TransactionFilters,
+  updateTransaction,
+} from '../api/transactions'
+import { fetchAccounts } from '../api/accounts'
+import { fetchCategories } from '../api/categories'
+import ConfirmDialog from '../components/ConfirmDialog'
+import ErrorAlert from '../components/ErrorAlert'
 import Modal from '../components/Modal'
+import PageLoader from '../components/PageLoader'
+import { inputClass, selectClass } from '../constants/styles'
 import { useCurrency } from '../contexts/CurrencyContext'
+import useFetch from '../hooks/useFetch'
 import { Account, Category, Transaction, TransactionType } from '../types'
 
 const TYPE_LABELS: Record<TransactionType, string> = {
@@ -24,11 +40,6 @@ const TYPE_COLORS: Record<TransactionType, string> = {
 export default function Transactions() {
   const { formatCurrency: baseFmtCurrency } = useCurrency()
   const formatCurrency = (amount: number) => baseFmtCurrency(Math.abs(amount))
-  const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [accounts, setAccounts] = useState<Account[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
 
   // Filters
   const [filterAccount, setFilterAccount] = useState('')
@@ -37,6 +48,36 @@ export default function Transactions() {
   const [filterStartDate, setFilterStartDate] = useState('')
   const [filterEndDate, setFilterEndDate] = useState('')
   const [search, setSearch] = useState('')
+
+  // Reference data (accounts + categories) — fetched once
+  const { data: accountsData } = useFetch(fetchAccounts)
+  const { data: categoriesData } = useFetch(fetchCategories)
+  const accounts: Account[] = accountsData ?? []
+  const categories: Category[] = categoriesData ?? []
+
+  // Transactions — re-fetched when filters change
+  const buildFilters = useCallback(
+    (): TransactionFilters => ({
+      account_id: filterAccount || undefined,
+      category_id: filterCategory || undefined,
+      type: filterType || undefined,
+      start_date: filterStartDate || undefined,
+      end_date: filterEndDate || undefined,
+      search: search || undefined,
+    }),
+    [filterAccount, filterCategory, filterType, filterStartDate, filterEndDate, search],
+  )
+
+  const {
+    data: txnData,
+    loading,
+    error,
+    refetch,
+  } = useFetch(
+    () => fetchTransactions(buildFilters()),
+    [filterAccount, filterCategory, filterType, filterStartDate, filterEndDate, search],
+  )
+  const transactions: Transaction[] = txnData ?? []
 
   // Modal
   const [modalOpen, setModalOpen] = useState(false)
@@ -55,48 +96,9 @@ export default function Transactions() {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [bulkCategoryId, setBulkCategoryId] = useState('')
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [confirmSingleTarget, setConfirmSingleTarget] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState('')
   const [bulkTypeId, setBulkTypeId] = useState<TransactionType | ''>('')
-
-  const fetchTransactions = async () => {
-    const params = new URLSearchParams()
-    if (filterAccount) params.append('account_id', filterAccount)
-    if (filterCategory) params.append('category_id', filterCategory)
-    if (filterType) params.append('type', filterType)
-    if (filterStartDate) params.append('start_date', filterStartDate)
-    if (filterEndDate) params.append('end_date', filterEndDate)
-    if (search) params.append('search', search)
-    try {
-      const res = await api.get(`/transactions?${params.toString()}`)
-      setTransactions(res.data)
-      setError('')
-    } catch {
-      setError('Failed to load transactions')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const fetchReferenceData = async () => {
-    try {
-      const [accountsRes, categoriesRes] = await Promise.all([
-        api.get('/accounts'),
-        api.get('/categories'),
-      ])
-      setAccounts(accountsRes.data)
-      setCategories(categoriesRes.data)
-    } catch {
-      setError('Failed to load accounts and categories')
-    }
-  }
-
-  useEffect(() => {
-    fetchReferenceData()
-  }, [])
-
-  useEffect(() => {
-    fetchTransactions()
-  }, [filterAccount, filterCategory, filterType, filterStartDate, filterEndDate, search])
 
   const getCategoryName = (categoryId: string | null): string => {
     if (!categoryId) return '—'
@@ -123,6 +125,7 @@ export default function Transactions() {
     setModalOpen(true)
   }
 
+  // Auto-set payment type for credit accounts on new transactions
   useEffect(() => {
     if (editing) return
     if (!form.account_id) return
@@ -169,7 +172,7 @@ export default function Transactions() {
     }
     try {
       if (editing) {
-        await api.patch(`/transactions/${editing.id}`, {
+        await updateTransaction(editing.id, {
           date: payload.date,
           amount: payload.amount,
           description: payload.description,
@@ -177,23 +180,18 @@ export default function Transactions() {
           type: payload.type,
         })
       } else {
-        await api.post('/transactions', payload)
+        await createTransaction(payload)
       }
       setModalOpen(false)
-      await fetchTransactions()
+      refetch()
     } catch {
       setFormError(editing ? 'Failed to update transaction' : 'Failed to create transaction')
     }
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this transaction?')) return
-    try {
-      await api.delete(`/transactions/${id}`)
-      await fetchTransactions()
-    } catch {
-      setError('Failed to delete transaction')
-    }
+    await deleteTransaction(id)
+    refetch()
   }
 
   const toggleSelect = (id: string) => {
@@ -216,32 +214,26 @@ export default function Transactions() {
   const handleBulkCategorize = async () => {
     if (selected.size === 0 || !bulkCategoryId) return
     try {
-      await api.post('/transactions/bulk-categorize', {
-        transaction_ids: Array.from(selected),
-        category_id: bulkCategoryId,
-      })
+      await bulkCategorizeTransactions(Array.from(selected), bulkCategoryId)
       setSelected(new Set())
       setBulkCategoryId('')
-      await fetchTransactions()
+      refetch()
     } catch {
-      setError('Failed to categorize transactions')
+      // error handled by toast-less pattern — refetch shows current state
     }
   }
 
   const handleBulkDelete = async () => {
     if (selected.size === 0) return
     try {
-      const res = await api.post('/transactions/bulk-delete', {
-        transaction_ids: Array.from(selected),
-      })
-      const count = res.data.deleted_count as number
+      const result = await bulkDeleteTransactions(Array.from(selected))
+      const count = result.deleted_count
       setSelected(new Set())
       setDeleteConfirmOpen(false)
       setSuccessMessage(`Successfully deleted ${count} transaction${count !== 1 ? 's' : ''}`)
       setTimeout(() => setSuccessMessage(''), 4000)
-      await fetchTransactions()
+      refetch()
     } catch {
-      setError('Failed to delete transactions')
       setDeleteConfirmOpen(false)
     }
   }
@@ -249,20 +241,17 @@ export default function Transactions() {
   const handleBulkUpdateType = async () => {
     if (selected.size === 0 || !bulkTypeId) return
     try {
-      const res = await api.post('/transactions/bulk-update-type', {
-        transaction_ids: Array.from(selected),
-        type: bulkTypeId,
-      })
-      const count = res.data.updated_count as number
+      const result = await bulkUpdateTransactionType(Array.from(selected), bulkTypeId)
+      const count = result.updated_count
       setSelected(new Set())
       setBulkTypeId('')
       setSuccessMessage(
         `Successfully updated ${count} transaction${count !== 1 ? 's' : ''} to ${TYPE_LABELS[bulkTypeId]}`,
       )
       setTimeout(() => setSuccessMessage(''), 4000)
-      await fetchTransactions()
+      refetch()
     } catch {
-      setError('Failed to update transaction type')
+      // non-critical
     }
   }
 
@@ -282,14 +271,7 @@ export default function Transactions() {
   const hasActiveFilters =
     filterAccount || filterCategory || filterType || filterStartDate || filterEndDate || search
 
-  const selectClass =
-    'bg-navy-850 border border-navy-750 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-emerald-500 cursor-pointer'
-  const inputClass =
-    'bg-navy-850 border border-navy-750 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-emerald-500 w-full'
-
-  if (loading) {
-    return <div className="text-slate-400">Loading transactions...</div>
-  }
+  if (loading) return <PageLoader label="Loading transactions..." />
 
   return (
     <div>
@@ -303,11 +285,8 @@ export default function Transactions() {
         </button>
       </div>
 
-      {/* Success message */}
       {successMessage && <p className="text-green-400 text-sm mb-4">{successMessage}</p>}
-
-      {/* Error display */}
-      {error && !modalOpen && <p className="text-red-400 text-sm mb-4">{error}</p>}
+      {error && !modalOpen && <ErrorAlert message={error} />}
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3 mb-4">
@@ -448,7 +427,6 @@ export default function Transactions() {
         </div>
       ) : (
         <div>
-          {/* Header row */}
           <div className="flex items-center gap-3 px-4 py-2 text-xs text-slate-400 uppercase tracking-wider border-b border-navy-800">
             <input
               type="checkbox"
@@ -521,7 +499,7 @@ export default function Transactions() {
                   Edit
                 </button>
                 <button
-                  onClick={() => handleDelete(txn.id)}
+                  onClick={() => setConfirmSingleTarget(txn.id)}
                   className="text-slate-400 hover:text-red-400 text-sm cursor-pointer"
                 >
                   Delete
@@ -531,6 +509,18 @@ export default function Transactions() {
           ))}
         </div>
       )}
+
+      {/* Single delete confirm */}
+      <ConfirmDialog
+        open={!!confirmSingleTarget}
+        title="Delete Transaction"
+        message="Delete this transaction?"
+        onConfirm={async () => {
+          if (confirmSingleTarget) await handleDelete(confirmSingleTarget)
+          setConfirmSingleTarget(null)
+        }}
+        onCancel={() => setConfirmSingleTarget(null)}
+      />
 
       {/* Bulk Delete Confirmation Modal */}
       <Modal
@@ -565,7 +555,7 @@ export default function Transactions() {
         onClose={() => setModalOpen(false)}
         title={editing ? 'Edit Transaction' : 'Add Transaction'}
       >
-        {formError && <p className="text-red-400 text-sm mb-4">{formError}</p>}
+        <ErrorAlert message={formError} />
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           {!editing && (
             <select

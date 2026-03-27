@@ -1,61 +1,50 @@
-import { useEffect, useState } from 'react'
 import { format, startOfMonth } from 'date-fns'
 import {
-  ResponsiveContainer,
-  BarChart,
   Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
 } from 'recharts'
-import api from '../api/client'
+import { fetchCategoryComparison, fetchMonthlySummary, fetchTrend } from '../api/reports'
+import ErrorAlert from '../components/ErrorAlert'
+import PageLoader from '../components/PageLoader'
+import { selectClass } from '../constants/styles'
 import { useCurrency } from '../contexts/CurrencyContext'
-import { CategoryComparison, MonthlySummary } from '../types'
+import useFetch from '../hooks/useFetch'
+import { useState } from 'react'
 
 export default function Reports() {
   const { formatCurrency, formatCompact } = useCurrency()
   const [month, setMonth] = useState(format(startOfMonth(new Date()), 'yyyy-MM'))
   const [monthRange, setMonthRange] = useState(6)
-  const [summary, setSummary] = useState<MonthlySummary | null>(null)
-  const [trend, setTrend] = useState<MonthlySummary[]>([])
-  const [comparison, setComparison] = useState<CategoryComparison[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
 
   const monthParam = `${month}-01`
 
-  useEffect(() => {
-    const fetchReports = async () => {
-      setLoading(true)
-      try {
-        const [summaryRes, trendRes, comparisonRes] = await Promise.all([
-          api.get(`/reports/monthly?month=${monthParam}`),
-          api.get(`/reports/trend?months=${monthRange}`),
-          api.get(`/reports/categories/comparison?month=${monthParam}`),
-        ])
-        setSummary(summaryRes.data)
-        setTrend(trendRes.data)
-        setComparison(comparisonRes.data)
-        setError('')
-      } catch {
-        setError('Failed to load reports')
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchReports()
-  }, [monthParam, monthRange])
+  const {
+    data: summary,
+    loading,
+    error: summaryError,
+  } = useFetch(() => fetchMonthlySummary(monthParam), [monthParam])
+  const { data: trend, error: trendError } = useFetch(() => fetchTrend(monthRange), [monthRange])
+  const { data: comparison, error: comparisonError } = useFetch(
+    () => fetchCategoryComparison(monthParam),
+    [monthParam],
+  )
 
-  const trendData = trend.map((m) => ({
+  const trendList = trend ?? []
+  const comparisonList = comparison ?? []
+
+  const error = summaryError || trendError || comparisonError
+
+  const trendData = trendList.map((m) => ({
     month: format(new Date(m.month + 'T00:00:00'), 'MMM yyyy'),
     income: m.income,
     expenses: m.expenses,
   }))
-
-  const selectClass =
-    'bg-navy-850 border border-navy-750 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-emerald-500 cursor-pointer'
 
   return (
     <div>
@@ -80,10 +69,10 @@ export default function Reports() {
         </div>
       </div>
 
-      {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
+      <ErrorAlert message={error ? 'Failed to load reports' : null} />
 
       {loading ? (
-        <div className="text-slate-400">Loading reports...</div>
+        <PageLoader label="Loading reports..." />
       ) : (
         <>
           {/* Savings summary */}
@@ -151,7 +140,7 @@ export default function Reports() {
             <h2 className="text-sm font-medium font-display text-slate-400 uppercase tracking-wider mb-4">
               Category Comparison (vs Prior Month)
             </h2>
-            {comparison.length > 0 ? (
+            {comparisonList.length > 0 ? (
               <div>
                 <div className="flex items-center px-4 py-2 text-xs text-slate-400 uppercase tracking-wider border-b border-navy-800">
                   <span className="flex-1">Category</span>
@@ -159,7 +148,7 @@ export default function Reports() {
                   <span className="w-32 text-right">Last Month</span>
                   <span className="w-24 text-right">Change</span>
                 </div>
-                {comparison.map((row) => (
+                {comparisonList.map((row) => (
                   <div
                     key={row.category_id}
                     className="flex items-center px-4 py-3 border-b border-navy-800 last:border-0"

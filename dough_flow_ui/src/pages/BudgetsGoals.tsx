@@ -1,12 +1,15 @@
-import { useEffect, useState } from 'react'
 import { format, startOfMonth, addMonths, subMonths } from 'date-fns'
-import api from '../api/client'
+import { useState } from 'react'
+import { deleteBudget, createBudget, updateBudget, fetchBudgetsWithSpending } from '../api/budgets'
+import { fetchCategories } from '../api/categories'
+import { createGoal, deleteGoal, fetchGoals, updateGoal } from '../api/goals'
+import ConfirmDialog from '../components/ConfirmDialog'
+import ErrorAlert from '../components/ErrorAlert'
 import Modal from '../components/Modal'
+import { inputClass } from '../constants/styles'
 import { useCurrency } from '../contexts/CurrencyContext'
-import { BudgetWithSpending, Category, Goal } from '../types'
-
-const inputClass =
-  'bg-navy-850 border border-navy-750 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-emerald-500 w-full'
+import useFetch from '../hooks/useFetch'
+import { BudgetWithSpending, Goal } from '../types'
 
 function budgetProgressColor(pct: number): string {
   if (pct > 100) return 'bg-red-500'
@@ -16,25 +19,41 @@ function budgetProgressColor(pct: number): string {
 
 export default function BudgetsGoals() {
   const { formatCurrency } = useCurrency()
-  // ---- month state ----
   const [selectedMonth, setSelectedMonth] = useState<Date>(startOfMonth(new Date()))
 
-  // ---- budgets state ----
-  const [budgets, setBudgets] = useState<BudgetWithSpending[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
-  const [budgetLoading, setBudgetLoading] = useState(true)
-  const [budgetError, setBudgetError] = useState('')
+  const monthStr = format(selectedMonth, 'yyyy-MM-dd')
 
+  // Budgets (re-fetches when month changes)
+  const {
+    data: budgetsData,
+    loading: budgetLoading,
+    error: budgetFetchError,
+    refetch: refetchBudgets,
+  } = useFetch(() => fetchBudgetsWithSpending(monthStr), [monthStr])
+
+  // Categories (fetched once, used by both budget and goal forms)
+  const { data: categoriesData } = useFetch(fetchCategories)
+
+  // Goals
+  const {
+    data: goalsData,
+    loading: goalsLoading,
+    error: goalsFetchError,
+    refetch: refetchGoals,
+  } = useFetch(fetchGoals)
+
+  const budgets: BudgetWithSpending[] = budgetsData ?? []
+  const categories = categoriesData ?? []
+  const goals: Goal[] = goalsData ?? []
+
+  // ---- budget modal state ----
   const [budgetModalOpen, setBudgetModalOpen] = useState(false)
   const [editingBudget, setEditingBudget] = useState<BudgetWithSpending | null>(null)
   const [budgetForm, setBudgetForm] = useState({ category_id: '', amount: '' })
   const [budgetFormError, setBudgetFormError] = useState('')
+  const [confirmBudgetTarget, setConfirmBudgetTarget] = useState<string | null>(null)
 
-  // ---- goals state ----
-  const [goals, setGoals] = useState<Goal[]>([])
-  const [goalsLoading, setGoalsLoading] = useState(true)
-  const [goalsError, setGoalsError] = useState('')
-
+  // ---- goal modal state ----
   const [goalModalOpen, setGoalModalOpen] = useState(false)
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null)
   const [goalForm, setGoalForm] = useState({
@@ -45,47 +64,7 @@ export default function BudgetsGoals() {
     icon: '',
   })
   const [goalFormError, setGoalFormError] = useState('')
-
-  // ---- fetch budgets ----
-  const fetchBudgets = async (month: Date) => {
-    setBudgetLoading(true)
-    setBudgetError('')
-    try {
-      const monthStr = format(month, 'yyyy-MM-dd')
-      const [budgetsRes, categoriesRes] = await Promise.all([
-        api.get(`/budgets/spending?month=${monthStr}`),
-        api.get('/categories'),
-      ])
-      setBudgets(budgetsRes.data)
-      setCategories(categoriesRes.data)
-    } catch {
-      setBudgetError('Failed to load budgets')
-    } finally {
-      setBudgetLoading(false)
-    }
-  }
-
-  // ---- fetch goals ----
-  const fetchGoals = async () => {
-    setGoalsLoading(true)
-    setGoalsError('')
-    try {
-      const res = await api.get('/goals')
-      setGoals(res.data)
-    } catch {
-      setGoalsError('Failed to load goals')
-    } finally {
-      setGoalsLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchBudgets(selectedMonth)
-  }, [selectedMonth])
-
-  useEffect(() => {
-    fetchGoals()
-  }, [])
+  const [confirmGoalTarget, setConfirmGoalTarget] = useState<string | null>(null)
 
   // ---- budget handlers ----
   const expenseCategories = categories.filter((c) => c.type === 'expense')
@@ -114,29 +93,24 @@ export default function BudgetsGoals() {
     }
     try {
       if (editingBudget) {
-        await api.patch(`/budgets/${editingBudget.id}`, { amount })
+        await updateBudget(editingBudget.id, { amount })
       } else {
-        await api.post('/budgets', {
+        await createBudget({
           category_id: budgetForm.category_id,
           amount,
           month: format(selectedMonth, 'yyyy-MM-dd'),
         })
       }
       setBudgetModalOpen(false)
-      await fetchBudgets(selectedMonth)
+      refetchBudgets()
     } catch {
       setBudgetFormError(editingBudget ? 'Failed to update budget' : 'Failed to create budget')
     }
   }
 
   const handleDeleteBudget = async (id: string) => {
-    if (!confirm('Delete this budget? This cannot be undone.')) return
-    try {
-      await api.delete(`/budgets/${id}`)
-      await fetchBudgets(selectedMonth)
-    } catch {
-      setBudgetError('Failed to delete budget')
-    }
+    await deleteBudget(id)
+    refetchBudgets()
   }
 
   // ---- goal handlers ----
@@ -182,25 +156,20 @@ export default function BudgetsGoals() {
     }
     try {
       if (editingGoal) {
-        await api.patch(`/goals/${editingGoal.id}`, payload)
+        await updateGoal(editingGoal.id, payload)
       } else {
-        await api.post('/goals', payload)
+        await createGoal(payload)
       }
       setGoalModalOpen(false)
-      await fetchGoals()
+      refetchGoals()
     } catch {
       setGoalFormError(editingGoal ? 'Failed to update goal' : 'Failed to create goal')
     }
   }
 
   const handleDeleteGoal = async (id: string) => {
-    if (!confirm('Delete this goal? This cannot be undone.')) return
-    try {
-      await api.delete(`/goals/${id}`)
-      await fetchGoals()
-    } catch {
-      setGoalsError('Failed to delete goal')
-    }
+    await deleteGoal(id)
+    refetchGoals()
   }
 
   return (
@@ -210,7 +179,6 @@ export default function BudgetsGoals() {
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold font-display">Budgets</h1>
           <div className="flex items-center gap-4">
-            {/* Month selector */}
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setSelectedMonth((m) => subMonths(m, 1))}
@@ -239,7 +207,7 @@ export default function BudgetsGoals() {
           </div>
         </div>
 
-        {budgetError && <p className="text-red-400 text-sm mb-4">{budgetError}</p>}
+        <ErrorAlert message={budgetFetchError} />
 
         {budgetLoading ? (
           <div className="text-slate-400">Loading budgets...</div>
@@ -272,7 +240,7 @@ export default function BudgetsGoals() {
                         Edit
                       </button>
                       <button
-                        onClick={() => handleDeleteBudget(budget.id)}
+                        onClick={() => setConfirmBudgetTarget(budget.id)}
                         className="text-slate-400 hover:text-red-400 text-sm transition-colors cursor-pointer"
                       >
                         Delete
@@ -314,7 +282,7 @@ export default function BudgetsGoals() {
           </button>
         </div>
 
-        {goalsError && <p className="text-red-400 text-sm mb-4">{goalsError}</p>}
+        <ErrorAlert message={goalsFetchError} />
 
         {goalsLoading ? (
           <div className="text-slate-400">Loading goals...</div>
@@ -351,7 +319,7 @@ export default function BudgetsGoals() {
                         Edit
                       </button>
                       <button
-                        onClick={() => handleDeleteGoal(goal.id)}
+                        onClick={() => setConfirmGoalTarget(goal.id)}
                         className="text-slate-400 hover:text-red-400 text-sm transition-colors cursor-pointer"
                       >
                         Delete
@@ -379,13 +347,36 @@ export default function BudgetsGoals() {
         )}
       </section>
 
+      {/* ===== CONFIRM DIALOGS ===== */}
+      <ConfirmDialog
+        open={!!confirmBudgetTarget}
+        title="Delete Budget"
+        message="Delete this budget? This cannot be undone."
+        onConfirm={async () => {
+          if (confirmBudgetTarget) await handleDeleteBudget(confirmBudgetTarget)
+          setConfirmBudgetTarget(null)
+        }}
+        onCancel={() => setConfirmBudgetTarget(null)}
+      />
+
+      <ConfirmDialog
+        open={!!confirmGoalTarget}
+        title="Delete Goal"
+        message="Delete this goal? This cannot be undone."
+        onConfirm={async () => {
+          if (confirmGoalTarget) await handleDeleteGoal(confirmGoalTarget)
+          setConfirmGoalTarget(null)
+        }}
+        onCancel={() => setConfirmGoalTarget(null)}
+      />
+
       {/* ===== BUDGET MODAL ===== */}
       <Modal
         open={budgetModalOpen}
         onClose={() => setBudgetModalOpen(false)}
         title={editingBudget ? 'Edit Budget' : 'Add Budget'}
       >
-        {budgetFormError && <p className="text-red-400 text-sm mb-4">{budgetFormError}</p>}
+        <ErrorAlert message={budgetFormError} />
         <form onSubmit={handleBudgetSubmit} className="flex flex-col gap-4">
           {!editingBudget && (
             <select
@@ -428,7 +419,7 @@ export default function BudgetsGoals() {
         onClose={() => setGoalModalOpen(false)}
         title={editingGoal ? 'Edit Goal' : 'Add Goal'}
       >
-        {goalFormError && <p className="text-red-400 text-sm mb-4">{goalFormError}</p>}
+        <ErrorAlert message={goalFormError} />
         <form onSubmit={handleGoalSubmit} className="flex flex-col gap-4">
           <input
             type="text"

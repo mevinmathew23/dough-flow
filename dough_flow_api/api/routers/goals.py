@@ -1,11 +1,12 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.database import get_db
 from api.dependencies import get_current_user
+from api.helpers import apply_update, create_entity, delete_entity, get_or_404
 from api.models.goal import Goal
 from api.models.user import User
 from api.schemas.goal import GoalCreate, GoalResponse, GoalUpdate
@@ -19,11 +20,7 @@ async def create_goal(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Goal:
-    goal = Goal(**data.model_dump(), user_id=current_user.id)
-    db.add(goal)
-    await db.commit()
-    await db.refresh(goal)
-    return goal
+    return await create_entity(db, Goal, data, current_user.id)
 
 
 @router.get("", response_model=list[GoalResponse])
@@ -41,11 +38,7 @@ async def get_goal(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Goal:
-    result = await db.execute(select(Goal).where(Goal.id == goal_id, Goal.user_id == current_user.id))
-    goal = result.scalar_one_or_none()
-    if goal is None:
-        raise HTTPException(status_code=404, detail="Goal not found")
-    return goal
+    return await get_or_404(db, Goal, goal_id, current_user.id, "Goal not found")
 
 
 @router.patch("/{goal_id}", response_model=GoalResponse)
@@ -55,14 +48,8 @@ async def update_goal(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Goal:
-    result = await db.execute(select(Goal).where(Goal.id == goal_id, Goal.user_id == current_user.id))
-    goal = result.scalar_one_or_none()
-    if goal is None:
-        raise HTTPException(status_code=404, detail="Goal not found")
-    for field, value in data.model_dump(exclude_unset=True).items():
-        setattr(goal, field, value)
-    await db.commit()
-    await db.refresh(goal)
+    goal = await get_or_404(db, Goal, goal_id, current_user.id, "Goal not found")
+    await apply_update(db, goal, data)
     return goal
 
 
@@ -72,9 +59,4 @@ async def delete_goal(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> None:
-    result = await db.execute(select(Goal).where(Goal.id == goal_id, Goal.user_id == current_user.id))
-    goal = result.scalar_one_or_none()
-    if goal is None:
-        raise HTTPException(status_code=404, detail="Goal not found")
-    await db.delete(goal)
-    await db.commit()
+    await delete_entity(db, Goal, goal_id, current_user.id, "Goal not found")
