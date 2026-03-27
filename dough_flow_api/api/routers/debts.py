@@ -1,12 +1,13 @@
 import uuid
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.database import get_db
 from api.dependencies import get_current_user
+from api.helpers import apply_update, create_entity, delete_entity, get_or_404
 from api.models.debt import Debt
 from api.models.user import User
 from api.schemas.debt import (
@@ -32,11 +33,7 @@ async def create_debt(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Debt:
-    debt = Debt(**data.model_dump(), user_id=current_user.id)
-    db.add(debt)
-    await db.commit()
-    await db.refresh(debt)
-    return debt
+    return await create_entity(db, Debt, data, current_user.id)
 
 
 @router.get("", response_model=list[DebtResponse])
@@ -110,11 +107,7 @@ async def get_debt(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Debt:
-    result = await db.execute(select(Debt).where(Debt.id == debt_id, Debt.user_id == current_user.id))
-    debt = result.scalar_one_or_none()
-    if debt is None:
-        raise HTTPException(status_code=404, detail="Debt not found")
-    return debt
+    return await get_or_404(db, Debt, debt_id, current_user.id, "Debt not found")
 
 
 @router.patch("/{debt_id}", response_model=DebtResponse)
@@ -124,14 +117,8 @@ async def update_debt(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Debt:
-    result = await db.execute(select(Debt).where(Debt.id == debt_id, Debt.user_id == current_user.id))
-    debt = result.scalar_one_or_none()
-    if debt is None:
-        raise HTTPException(status_code=404, detail="Debt not found")
-    for field, value in data.model_dump(exclude_unset=True).items():
-        setattr(debt, field, value)
-    await db.commit()
-    await db.refresh(debt)
+    debt = await get_or_404(db, Debt, debt_id, current_user.id, "Debt not found")
+    await apply_update(db, debt, data)
     return debt
 
 
@@ -141,9 +128,4 @@ async def delete_debt(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> None:
-    result = await db.execute(select(Debt).where(Debt.id == debt_id, Debt.user_id == current_user.id))
-    debt = result.scalar_one_or_none()
-    if debt is None:
-        raise HTTPException(status_code=404, detail="Debt not found")
-    await db.delete(debt)
-    await db.commit()
+    await delete_entity(db, Debt, debt_id, current_user.id, "Debt not found")

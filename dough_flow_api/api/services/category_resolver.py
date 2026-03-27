@@ -1,19 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal, TypedDict
+from typing import Literal
 
 from rapidfuzz import fuzz
 
-
-class CategoryMappingEntryDict(TypedDict):
-    source: str
-    target: str
-
-
-class CategoryMappingDict(TypedDict):
-    entries: list[CategoryMappingEntryDict]
-
+from api.schemas.csv_import import CategoryMappingEntryDict
 
 FUZZY_THRESHOLD = 70.0
 
@@ -37,6 +29,14 @@ def resolve_category(
     2. Institution mapping lookup (source -> target)
     3. Fuzzy match via rapidfuzz (>= 70% threshold)
     4. Unmatched
+
+    Args:
+        category_name: Raw category string from the CSV row.
+        category_names: List of known app category names.
+        institution_entries: Institution-specific source-to-target mappings.
+
+    Returns:
+        CategoryMatch with resolved name, method used, and optional confidence score.
     """
     if not category_name or not category_name.strip():
         return CategoryMatch(resolved_name=None, method="unmatched", confidence=None)

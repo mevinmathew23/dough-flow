@@ -1,21 +1,28 @@
 // frontend/src/pages/Dashboard.tsx
-import { useEffect, useState } from 'react'
 import { format, startOfMonth } from 'date-fns'
 import {
-  ResponsiveContainer,
-  LineChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
   Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  BarChart,
-  Bar,
-  Cell,
 } from 'recharts'
-import api from '../api/client'
+import { fetchAccounts } from '../api/accounts'
+import { fetchDebts } from '../api/debts'
+import {
+  fetchCategorySpending,
+  fetchMonthlySummary,
+  fetchNetWorth,
+  fetchTrend,
+} from '../api/reports'
+import ErrorAlert from '../components/ErrorAlert'
 import { useCurrency } from '../contexts/CurrencyContext'
-import { Account, CategorySpending, Debt, MonthlySummary, NetWorth } from '../types'
+import useFetch from '../hooks/useFetch'
 
 const CHART_COLORS = [
   '#10b981',
@@ -28,45 +35,29 @@ const CHART_COLORS = [
   '#84cc16',
 ]
 
+const CURRENT_MONTH = format(startOfMonth(new Date()), 'yyyy-MM-dd')
+
 export default function Dashboard() {
   const { formatCurrency, formatCompact } = useCurrency()
-  const [summary, setSummary] = useState<MonthlySummary | null>(null)
-  const [netWorth, setNetWorth] = useState<NetWorth | null>(null)
-  const [trend, setTrend] = useState<MonthlySummary[]>([])
-  const [categorySpending, setCategorySpending] = useState<CategorySpending[]>([])
-  const [accounts, setAccounts] = useState<Account[]>([])
-  const [debts, setDebts] = useState<Debt[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
 
-  useEffect(() => {
-    const fetchDashboard = async () => {
-      const month = format(startOfMonth(new Date()), 'yyyy-MM-dd')
-      const results = await Promise.allSettled([
-        api.get(`/reports/monthly?month=${month}`),
-        api.get('/reports/net-worth'),
-        api.get('/reports/trend?months=6'),
-        api.get(`/reports/categories?month=${month}`),
-        api.get('/accounts'),
-        api.get('/debts'),
-      ])
-      const [summaryRes, netWorthRes, trendRes, categoryRes, accountsRes, debtsRes] = results
-      if (summaryRes.status === 'fulfilled') setSummary(summaryRes.value.data)
-      if (netWorthRes.status === 'fulfilled') setNetWorth(netWorthRes.value.data)
-      if (trendRes.status === 'fulfilled') setTrend(trendRes.value.data)
-      if (categoryRes.status === 'fulfilled') setCategorySpending(categoryRes.value.data)
-      if (accountsRes.status === 'fulfilled') setAccounts(accountsRes.value.data)
-      if (debtsRes.status === 'fulfilled') setDebts(debtsRes.value.data)
-      const failures = results.filter((r) => r.status === 'rejected')
-      if (failures.length === results.length) {
-        setError('Failed to load dashboard data')
-      } else if (failures.length > 0) {
-        setError('Some dashboard data could not be loaded')
-      }
-      setLoading(false)
-    }
-    fetchDashboard()
-  }, [])
+  const { data: summary, error: summaryError } = useFetch(() => fetchMonthlySummary(CURRENT_MONTH))
+  const { data: netWorth, error: netWorthError } = useFetch(fetchNetWorth)
+  const { data: trend, loading, error: trendError } = useFetch(() => fetchTrend(6))
+  const { data: categorySpending, error: categoryError } = useFetch(() =>
+    fetchCategorySpending(CURRENT_MONTH),
+  )
+  const { data: accounts, error: accountsError } = useFetch(fetchAccounts)
+  const { data: debts, error: debtsError } = useFetch(fetchDebts)
+
+  const trendList = trend ?? []
+  const accountList = accounts ?? []
+  const debtList = debts ?? []
+  const categoryList = categorySpending ?? []
+
+  const combinedError =
+    summaryError || netWorthError || trendError || categoryError || accountsError || debtsError
+      ? 'Some dashboard data could not be loaded'
+      : ''
 
   if (loading) {
     return (
@@ -74,14 +65,14 @@ export default function Dashboard() {
     )
   }
 
-  const trendData = trend.map((m) => ({
+  const trendData = trendList.map((m) => ({
     month: format(new Date(m.month + 'T00:00:00'), 'MMM'),
     income: m.income,
     expenses: m.expenses,
   }))
 
-  const totalDebt = debts.reduce((sum, d) => sum + d.current_balance, 0)
-  const priorMonth = trend.length >= 2 ? trend[trend.length - 2] : null
+  const totalDebt = debtList.reduce((sum, d) => sum + d.current_balance, 0)
+  const priorMonth = trendList.length >= 2 ? trendList[trendList.length - 2] : null
   const incomeChange =
     priorMonth && priorMonth.income > 0 && summary
       ? ((summary.income - priorMonth.income) / priorMonth.income) * 100
@@ -95,7 +86,7 @@ export default function Dashboard() {
     <div>
       <h1 className="text-2xl font-bold font-display mb-6">Dashboard</h1>
 
-      {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
+      <ErrorAlert message={combinedError} />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-4 gap-4 mb-8">
@@ -187,9 +178,9 @@ export default function Dashboard() {
           <h2 className="text-sm font-medium font-display text-slate-400 uppercase tracking-wider mb-4">
             Spending by Category
           </h2>
-          {categorySpending.length > 0 ? (
+          {categoryList.length > 0 ? (
             <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={categorySpending} layout="vertical">
+              <BarChart data={categoryList} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="#1E2D3D" horizontal={false} />
                 <XAxis
                   type="number"
@@ -212,7 +203,7 @@ export default function Dashboard() {
                   formatter={(value: number) => formatCurrency(value)}
                 />
                 <Bar dataKey="total" radius={[0, 4, 4, 0]}>
-                  {categorySpending.map((_, i) => (
+                  {categoryList.map((_, i) => (
                     <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                   ))}
                 </Bar>
@@ -229,9 +220,9 @@ export default function Dashboard() {
         <h2 className="text-sm font-medium font-display text-slate-400 uppercase tracking-wider mb-4">
           Account Balances
         </h2>
-        {accounts.length > 0 ? (
+        {accountList.length > 0 ? (
           <div className="space-y-2">
-            {accounts.map((account) => (
+            {accountList.map((account) => (
               <div
                 key={account.id}
                 className="flex items-center justify-between py-2 border-b border-navy-800 last:border-0 cursor-pointer"

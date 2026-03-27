@@ -1,6 +1,6 @@
 from typing import NotRequired, TypedDict
 
-from api.services.category_resolver import CategoryMappingDict
+from api.schemas.csv_import import CategoryMappingDict
 
 
 class InstitutionMappingDict(TypedDict):

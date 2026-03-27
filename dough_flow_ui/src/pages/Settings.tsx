@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import api from '../api/client'
-import { User } from '../types'
-import { useCurrency } from '../contexts/CurrencyContext'
+import { fetchCurrentUser } from '../api/auth'
+import ErrorAlert from '../components/ErrorAlert'
+import PageLoader from '../components/PageLoader'
 import SearchableSelect from '../components/SearchableSelect'
+import { useCurrency } from '../contexts/CurrencyContext'
+import useFetch from '../hooks/useFetch'
 
 const CURRENCY_OPTIONS = [
   { value: 'USD', label: 'USD - US Dollar' },
@@ -69,11 +71,12 @@ function formatDate(dateStr: string): string {
 export default function Settings() {
   const navigate = useNavigate()
   const { currency, setCurrency } = useCurrency()
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+
+  const { data: user, loading, error: fetchError } = useFetch(fetchCurrentUser)
+
   const [selectedCurrency, setSelectedCurrency] = useState(currency)
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
   const [saved, setSaved] = useState(false)
 
   const hasChanges = selectedCurrency !== currency
@@ -82,32 +85,16 @@ export default function Settings() {
     setSelectedCurrency(currency)
   }, [currency])
 
-  useEffect(() => {
-    const fetchProfile = async () => {
-      setLoading(true)
-      setError('')
-      try {
-        const res = await api.get<User>('/auth/me')
-        setUser(res.data)
-      } catch {
-        setError('Failed to load profile. Please try again.')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchProfile()
-  }, [])
-
   const handleSave = async () => {
     setSaving(true)
     setSaved(false)
+    setSaveError('')
     try {
       await setCurrency(selectedCurrency)
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch {
-      setError('Failed to save preferences.')
+      setSaveError('Failed to save preferences.')
     } finally {
       setSaving(false)
     }
@@ -118,19 +105,17 @@ export default function Settings() {
     navigate('/login')
   }
 
+  const error = fetchError || saveError
+
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <h1 className="text-2xl font-bold font-display text-white">Settings</h1>
 
-      {loading && <div className="text-slate-400 text-sm">Loading profile...</div>}
+      {loading && <PageLoader label="Loading profile..." />}
 
-      {error && (
-        <div className="bg-red-900/30 border border-red-700 text-red-400 rounded-xl px-4 py-3 text-sm">
-          {error}
-        </div>
-      )}
+      <ErrorAlert message={error} />
 
-      {!loading && !error && user && (
+      {!loading && !fetchError && user && (
         <div className="bg-navy-900 border border-navy-800 rounded-xl p-6 space-y-4">
           <h2 className="text-lg font-semibold font-display text-white">Profile</h2>
 

@@ -67,3 +67,23 @@ async def test_update_currency(auth_client: AsyncClient):
     assert response.json()["currency"] == "EUR"
     me = await auth_client.get("/api/auth/me")
     assert me.json()["currency"] == "EUR"
+
+
+async def test_login_nonexistent_email(client: AsyncClient):
+    response = await client.post(
+        "/api/auth/login",
+        data={"username": "nobody@example.com", "password": "whatever"},
+    )
+    assert response.status_code == 401
+
+
+async def test_access_me_with_garbage_token(client: AsyncClient):
+    client.headers["Authorization"] = "Bearer this.is.not.a.valid.jwt"
+    response = await client.get("/api/auth/me")
+    assert response.status_code == 401
+
+
+async def test_health_endpoint(client: AsyncClient):
+    response = await client.get("/api/health")
+    assert response.status_code == 200
+    assert response.json()["status"] == "ok"
