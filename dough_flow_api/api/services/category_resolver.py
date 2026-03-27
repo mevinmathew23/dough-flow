@@ -10,6 +10,7 @@ class CategoryMappingEntryDict(TypedDict):
     source: str
     target: str
 
+
 FUZZY_THRESHOLD = 70.0
 
 

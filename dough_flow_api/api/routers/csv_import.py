@@ -90,9 +90,7 @@ async def preview_csv(
     # Load institution category mapping if a mapping was selected
     institution_entries: list[CategoryMappingEntryDict] = []
     if mapping_id:
-        mapping_result = await db.execute(
-            select(CSVMapping).where(CSVMapping.id == uuid.UUID(mapping_id))
-        )
+        mapping_result = await db.execute(select(CSVMapping).where(CSVMapping.id == uuid.UUID(mapping_id)))
         mapping_obj = mapping_result.scalar_one_or_none()
         if mapping_obj and mapping_obj.category_mapping:
             institution_entries = mapping_obj.category_mapping.get("entries", [])
@@ -209,9 +207,7 @@ async def confirm_import(
                 overrides.append({"source": row.category_name, "target": row.resolved_category_name})
 
         if overrides:
-            mapping_result = await db.execute(
-                select(CSVMapping).where(CSVMapping.id == data.mapping_id)
-            )
+            mapping_result = await db.execute(select(CSVMapping).where(CSVMapping.id == data.mapping_id))
             mapping_obj = mapping_result.scalar_one_or_none()
             if mapping_obj:
                 if mapping_obj.is_default:
@@ -260,9 +256,7 @@ async def list_mappings(
     current_user: User = Depends(get_current_user),
 ) -> list[CSVMapping]:
     result = await db.execute(
-        select(CSVMapping).where(
-            or_(CSVMapping.user_id == current_user.id, CSVMapping.user_id.is_(None))
-        )
+        select(CSVMapping).where(or_(CSVMapping.user_id == current_user.id, CSVMapping.user_id.is_(None)))
     )
     return list(result.scalars().all())
 
