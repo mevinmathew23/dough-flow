@@ -18,8 +18,7 @@ from api.routers import (
     reports,
     transactions,
 )
-from api.seed import seed_default_categories
-from api.seed_csv_mappings import seed_default_csv_mappings
+from api.seed import seed_default_categories, seed_default_csv_mappings
 
 
 class HealthResponse(BaseModel):

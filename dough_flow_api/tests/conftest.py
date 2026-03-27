@@ -10,8 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from api.database import Base, get_db
 from api.main import app
-from api.seed import seed_default_categories
-from api.seed_csv_mappings import seed_default_csv_mappings
+from api.seed import seed_default_categories, seed_default_csv_mappings
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///./test.db"
 

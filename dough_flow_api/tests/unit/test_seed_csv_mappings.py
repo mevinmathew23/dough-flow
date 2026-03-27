@@ -2,7 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models.csv_mapping import CSVMapping
-from api.seed_csv_mappings import INSTITUTION_MAPPINGS, seed_default_csv_mappings
+from api.seed import INSTITUTION_MAPPINGS, seed_default_csv_mappings
 
 
 async def test_seed_creates_default_mappings(db_session: AsyncSession):

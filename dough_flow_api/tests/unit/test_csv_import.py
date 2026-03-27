@@ -224,7 +224,7 @@ async def test_csv_preview_with_institution_mapping(auth_client: AsyncClient):
 
 
 async def test_list_mappings_includes_defaults(auth_client: AsyncClient):
-    from api.seed_csv_mappings import INSTITUTION_MAPPINGS
+    from api.seed import INSTITUTION_MAPPINGS
 
     response = await auth_client.get("/api/csv/mappings")
     assert response.status_code == 200
