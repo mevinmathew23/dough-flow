@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from api.database import Base, get_db
 from api.main import app
-from api.seed import seed_default_categories
+from api.seed import seed_default_categories, seed_default_csv_mappings
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///./test.db"
 
@@ -24,6 +24,7 @@ async def setup_db() -> AsyncGenerator[None, None]:
         await conn.run_sync(Base.metadata.create_all)
     async with TestingSessionLocal() as session:
         await seed_default_categories(session)
+        await seed_default_csv_mappings(session)
     yield
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
@@ -57,3 +58,9 @@ async def auth_client(client: AsyncClient) -> AsyncClient:
     token = response.json()["access_token"]
     client.headers["Authorization"] = f"Bearer {token}"
     return client
+
+
+@pytest.fixture
+async def db_session() -> AsyncGenerator[AsyncSession, None]:
+    async with TestingSessionLocal() as session:
+        yield session

@@ -3,8 +3,9 @@ import uuid
 from datetime import date as date_type
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import flag_modified
 
 from api.database import get_db
 from api.dependencies import get_current_user
@@ -22,6 +23,7 @@ from api.schemas.csv_import import (
     ExistingTransaction,
     TransferCandidate,
 )
+from api.services.category_resolver import CategoryMappingEntryDict, resolve_category
 from api.services.csv_parser import CSVParseError, detect_columns, find_duplicates, parse_csv
 from api.services.transfer_matcher import find_transfer_matches
 
@@ -48,6 +50,7 @@ async def preview_csv(
     date_format: str = Form("%m/%d/%Y"),
     account_id: str | None = Form(None),
     date_tolerance_days: int = Form(5),
+    mapping_id: str | None = Form(None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> CSVPreviewResponse:
@@ -85,17 +88,40 @@ async def preview_csv(
             date_tolerance_days=date_tolerance_days,
         )
 
-    rows = [
-        CSVPreviewRow(
-            date=row.date,
-            description=row.description,
-            amount=row.amount,
-            category_name=row.category_name,
-            is_duplicate=i in duplicate_indices,
-            transfer_match=transfer_matches.get(i),
+    # Load institution category mapping if a mapping was selected
+    institution_entries: list[CategoryMappingEntryDict] = []
+    if mapping_id:
+        mapping_result = await db.execute(select(CSVMapping).where(CSVMapping.id == uuid.UUID(mapping_id)))
+        mapping_obj = mapping_result.scalar_one_or_none()
+        if mapping_obj and mapping_obj.category_mapping:
+            institution_entries = [
+                CategoryMappingEntryDict(source=e["source"], target=e["target"])
+                for e in mapping_obj.category_mapping.get("entries", [])
+            ]
+
+    # Build list of category names for resolution
+    cat_result = await db.execute(
+        select(Category).where(or_(Category.user_id == current_user.id, Category.user_id.is_(None)))
+    )
+    all_categories = cat_result.scalars().all()
+    category_names = [c.name for c in all_categories]
+
+    rows = []
+    for i, row in enumerate(parsed):
+        match = resolve_category(row.category_name, category_names, institution_entries)
+        rows.append(
+            CSVPreviewRow(
+                date=row.date,
+                description=row.description,
+                amount=row.amount,
+                category_name=row.category_name,
+                resolved_category_name=match.resolved_name,
+                match_method=match.method,
+                confidence=match.confidence,
+                is_duplicate=i in duplicate_indices,
+                transfer_match=transfer_matches.get(i),
+            )
         )
-        for i, row in enumerate(parsed)
-    ]
 
     return CSVPreviewResponse(
         columns=list(mapping.values()),
@@ -115,8 +141,10 @@ async def confirm_import(
     imported = 0
     skipped = 0
 
-    # Build category name -> id lookup for the current user
-    cat_result = await db.execute(select(Category).where(Category.user_id == current_user.id))
+    # Build category name -> id lookup for the current user (including defaults)
+    cat_result = await db.execute(
+        select(Category).where(or_(Category.user_id == current_user.id, Category.user_id.is_(None)))
+    )
     category_by_name: dict[str, uuid.UUID] = {cat.name.lower(): cat.id for cat in cat_result.scalars().all()}
 
     for row in data.rows:
@@ -124,7 +152,9 @@ async def confirm_import(
             skipped += 1
             continue
 
-        resolved_category_id = category_by_name.get(row.category_name.lower()) if row.category_name else None
+        # Prefer resolved_category_name (from preview resolution), fall back to category_name
+        effective_category = row.resolved_category_name or row.category_name
+        resolved_category_id = category_by_name.get(effective_category.lower()) if effective_category else None
 
         if row.link_transfer_id:
             # Link as a transfer pair
@@ -168,6 +198,61 @@ async def confirm_import(
             db.add(txn)
         imported += 1
 
+    # Auto-save category overrides to institution mapping
+    if data.mapping_id:
+        overrides: list[CategoryMappingEntryDict] = []
+        for row in data.rows:
+            if (
+                row.category_name
+                and row.resolved_category_name
+                and row.category_name.lower() != row.resolved_category_name.lower()
+                and row.match_method in ("fuzzy", "unmatched")
+            ):
+                overrides.append(CategoryMappingEntryDict(source=row.category_name, target=row.resolved_category_name))
+
+        # Deduplicate overrides (last wins per source)
+        seen: dict[str, CategoryMappingEntryDict] = {}
+        for override in overrides:
+            seen[override["source"].lower()] = override
+        unique_overrides = list(seen.values())
+
+        if unique_overrides:
+            mapping_result = await db.execute(select(CSVMapping).where(CSVMapping.id == data.mapping_id))
+            mapping_obj = mapping_result.scalar_one_or_none()
+            if mapping_obj:
+                if mapping_obj.is_default:
+                    existing_entries = list(
+                        mapping_obj.category_mapping.get("entries", []) if mapping_obj.category_mapping else []
+                    )
+                    # Merge: existing + unique overrides, deduped by source
+                    merged: dict[str, CategoryMappingEntryDict] = {
+                        e["source"].lower(): CategoryMappingEntryDict(source=e["source"], target=e["target"])
+                        for e in existing_entries
+                    }
+                    for override in unique_overrides:
+                        merged[override["source"].lower()] = override
+                    new_mapping = CSVMapping(
+                        user_id=current_user.id,
+                        institution_name=mapping_obj.institution_name,
+                        column_mapping=mapping_obj.column_mapping,
+                        date_format=mapping_obj.date_format,
+                        category_mapping={"entries": list(merged.values())},
+                        is_default=False,
+                    )
+                    db.add(new_mapping)
+                else:
+                    existing = mapping_obj.category_mapping or {"entries": []}
+                    existing_entries = list(existing.get("entries", []))
+                    existing_sources = {e["source"].lower(): i for i, e in enumerate(existing_entries)}
+                    for override in unique_overrides:
+                        source_lower = override["source"].lower()
+                        if source_lower in existing_sources:
+                            existing_entries[existing_sources[source_lower]] = override
+                        else:
+                            existing_entries.append(override)
+                    mapping_obj.category_mapping = {"entries": existing_entries}
+                    flag_modified(mapping_obj, "category_mapping")
+
     # Save mapping if requested
     if data.save_mapping and data.column_mapping and data.institution_name:
         mapping = CSVMapping(
@@ -188,7 +273,9 @@ async def list_mappings(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[CSVMapping]:
-    result = await db.execute(select(CSVMapping).where(CSVMapping.user_id == current_user.id))
+    result = await db.execute(
+        select(CSVMapping).where(or_(CSVMapping.user_id == current_user.id, CSVMapping.user_id.is_(None)))
+    )
     return list(result.scalars().all())
 
 
