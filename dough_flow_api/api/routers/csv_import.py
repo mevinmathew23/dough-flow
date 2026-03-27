@@ -9,6 +9,7 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from api.database import get_db
 from api.dependencies import get_current_user
+from api.models.account import Account
 from api.models.category import Category
 from api.models.csv_mapping import CSVMapping
 from api.models.transaction import Transaction, TransactionSource, TransactionType
@@ -140,6 +141,13 @@ async def confirm_import(
 ) -> CSVConfirmResponse:
     imported = 0
     skipped = 0
+
+    # Verify account belongs to current user
+    acct_result = await db.execute(
+        select(Account).where(Account.id == data.account_id, Account.user_id == current_user.id)
+    )
+    if acct_result.scalar_one_or_none() is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account not owned by user")
 
     # Build category name -> id lookup for the current user (including defaults)
     cat_result = await db.execute(

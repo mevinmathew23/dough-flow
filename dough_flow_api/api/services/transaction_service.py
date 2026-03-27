@@ -1,9 +1,10 @@
 import uuid
 from datetime import date
 
-from sqlalchemy import Select, select
+from sqlalchemy import Select, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.models.category import Category
 from api.models.transaction import Transaction, TransactionType
 
 
@@ -41,7 +42,30 @@ async def bulk_categorize_transactions(
     transaction_ids: list[uuid.UUID],
     category_id: uuid.UUID,
 ) -> int:
-    """Assign a category to multiple transactions. Returns count of updated rows."""
+    """Assign a category to multiple transactions. Returns count of updated rows.
+
+    Args:
+        db: Async database session
+        user_id: ID of the current user
+        transaction_ids: List of transaction IDs to update
+        category_id: Category to assign
+
+    Returns:
+        Count of updated transactions
+
+    Raises:
+        ValueError: If the category does not belong to the user or a default
+    """
+    # Validate category belongs to user or is a default
+    cat_result = await db.execute(
+        select(Category).where(
+            Category.id == category_id,
+            or_(Category.user_id == user_id, Category.user_id.is_(None)),
+        )
+    )
+    if cat_result.scalar_one_or_none() is None:
+        raise ValueError("Category not found or not owned by user")
+
     result = await db.execute(
         select(Transaction).where(
             Transaction.id.in_(transaction_ids),

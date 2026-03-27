@@ -23,10 +23,10 @@ async def create_account(
     account_data = data.model_dump(exclude={"minimum_payment", "compounding_frequency"})
     account = Account(**account_data, user_id=current_user.id)
     db.add(account)
-    await db.commit()
-    await db.refresh(account)
 
-    if account.type in (AccountType.CREDIT, AccountType.LOAN):
+    if data.type in (AccountType.CREDIT, AccountType.LOAN):
+        # Flush to generate account.id without committing, then attach debt in the same transaction
+        await db.flush()
         debt = Debt(
             account_id=account.id,
             user_id=current_user.id,
@@ -41,9 +41,9 @@ async def create_account(
             ),
         )
         db.add(debt)
-        await db.commit()
-        await db.refresh(account)
 
+    await db.commit()
+    await db.refresh(account)
     return account
 
 

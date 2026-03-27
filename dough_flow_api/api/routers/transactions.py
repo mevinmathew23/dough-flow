@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.database import get_db
 from api.dependencies import get_current_user
+from api.models.account import Account
 from api.models.transaction import Transaction, TransactionType
 from api.models.user import User
 from api.schemas.transaction import (
@@ -35,6 +36,13 @@ async def create_transaction(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Transaction:
+    # Verify account belongs to current user
+    acct_result = await db.execute(
+        select(Account).where(Account.id == data.account_id, Account.user_id == current_user.id)
+    )
+    if acct_result.scalar_one_or_none() is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account not owned by user")
+
     txn = Transaction(**data.model_dump(), user_id=current_user.id)
     db.add(txn)
     await db.commit()
@@ -133,7 +141,10 @@ async def bulk_categorize(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict[str, int]:
-    updated_count = await bulk_categorize_transactions(db, current_user.id, data.transaction_ids, data.category_id)
+    try:
+        updated_count = await bulk_categorize_transactions(db, current_user.id, data.transaction_ids, data.category_id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
     return {"updated_count": updated_count}
 
 
