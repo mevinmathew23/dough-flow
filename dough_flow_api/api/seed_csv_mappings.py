@@ -1,20 +1,17 @@
-from typing import TypedDict
+from typing import NotRequired, TypedDict
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models.csv_mapping import CSVMapping
+from api.services.category_resolver import CategoryMappingDict
 
 
-class _CategoryMappingDict(TypedDict):
-    entries: list[dict[str, str]]
-
-
-class InstitutionMappingDict(TypedDict, total=False):
+class InstitutionMappingDict(TypedDict):
     institution_name: str
     column_mapping: dict[str, str]
     date_format: str
-    category_mapping: _CategoryMappingDict | None
+    category_mapping: NotRequired[CategoryMappingDict | None]
 
 
 INSTITUTION_MAPPINGS: list[InstitutionMappingDict] = [

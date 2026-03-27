@@ -5,6 +5,7 @@ from datetime import date as date_type
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import flag_modified
 
 from api.database import get_db
 from api.dependencies import get_current_user
@@ -209,34 +210,48 @@ async def confirm_import(
             ):
                 overrides.append(CategoryMappingEntryDict(source=row.category_name, target=row.resolved_category_name))
 
-        if overrides:
+        # Deduplicate overrides (last wins per source)
+        seen: dict[str, CategoryMappingEntryDict] = {}
+        for override in overrides:
+            seen[override["source"].lower()] = override
+        unique_overrides = list(seen.values())
+
+        if unique_overrides:
             mapping_result = await db.execute(select(CSVMapping).where(CSVMapping.id == data.mapping_id))
             mapping_obj = mapping_result.scalar_one_or_none()
             if mapping_obj:
                 if mapping_obj.is_default:
-                    existing_entries = (
+                    existing_entries = list(
                         mapping_obj.category_mapping.get("entries", []) if mapping_obj.category_mapping else []
                     )
+                    # Merge: existing + unique overrides, deduped by source
+                    merged: dict[str, CategoryMappingEntryDict] = {
+                        e["source"].lower(): CategoryMappingEntryDict(source=e["source"], target=e["target"])
+                        for e in existing_entries
+                    }
+                    for override in unique_overrides:
+                        merged[override["source"].lower()] = override
                     new_mapping = CSVMapping(
                         user_id=current_user.id,
                         institution_name=mapping_obj.institution_name,
                         column_mapping=mapping_obj.column_mapping,
                         date_format=mapping_obj.date_format,
-                        category_mapping={"entries": existing_entries + overrides},
+                        category_mapping={"entries": list(merged.values())},
                         is_default=False,
                     )
                     db.add(new_mapping)
                 else:
                     existing = mapping_obj.category_mapping or {"entries": []}
-                    existing_entries = existing.get("entries", [])
+                    existing_entries = list(existing.get("entries", []))
                     existing_sources = {e["source"].lower(): i for i, e in enumerate(existing_entries)}
-                    for override in overrides:
+                    for override in unique_overrides:
                         source_lower = override["source"].lower()
                         if source_lower in existing_sources:
                             existing_entries[existing_sources[source_lower]] = override
                         else:
                             existing_entries.append(override)
                     mapping_obj.category_mapping = {"entries": existing_entries}
+                    flag_modified(mapping_obj, "category_mapping")
 
     # Save mapping if requested
     if data.save_mapping and data.column_mapping and data.institution_name:

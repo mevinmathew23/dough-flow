@@ -149,8 +149,8 @@ export default function CsvImport() {
 
   // Step 4 (confirm result)
   const [confirmResult, setConfirmResult] = useState<{
-    imported: number
-    skipped: number
+    imported_count: number
+    skipped_duplicates: number
   } | null>(null)
 
   // Loading / error
@@ -367,7 +367,10 @@ export default function CsvImport() {
         date_format: dateFormat,
         mapping_id: selectedMapping?.id ?? null,
       }
-      const res = await api.post<{ imported: number; skipped: number }>('/csv/confirm', payload)
+      const res = await api.post<{ imported_count: number; skipped_duplicates: number }>(
+        '/csv/confirm',
+        payload,
+      )
       setConfirmResult(res.data)
       setStep(4)
     } catch {
@@ -794,12 +797,12 @@ export default function CsvImport() {
         <h2 className="text-xl font-bold font-display text-slate-100 mb-1">Import Complete</h2>
         {confirmResult && (
           <p className="text-slate-400 text-sm">
-            {confirmResult.imported} transaction
-            {confirmResult.imported !== 1 ? 's' : ''} imported
-            {confirmResult.skipped > 0 && (
+            {confirmResult.imported_count} transaction
+            {confirmResult.imported_count !== 1 ? 's' : ''} imported
+            {confirmResult.skipped_duplicates > 0 && (
               <span>
-                , {confirmResult.skipped} skipped as duplicate
-                {confirmResult.skipped !== 1 ? 's' : ''}
+                , {confirmResult.skipped_duplicates} skipped as duplicate
+                {confirmResult.skipped_duplicates !== 1 ? 's' : ''}
               </span>
             )}
           </p>
