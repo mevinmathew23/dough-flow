@@ -33,11 +33,14 @@ class CSVMappingResponse(BaseModel):
 
     @field_validator("category_mapping", mode="before")
     @classmethod
-    def parse_category_mapping(cls, v: dict | None) -> InstitutionCategoryMapping | None:
+    def parse_category_mapping(
+        cls, v: dict[str, list[dict[str, str]]] | InstitutionCategoryMapping | None
+    ) -> InstitutionCategoryMapping | None:
         if v is None:
             return None
         if isinstance(v, dict):
-            return InstitutionCategoryMapping(**v)
+            entries = [CategoryMappingEntry(**e) for e in v.get("entries", [])]
+            return InstitutionCategoryMapping(entries=entries)
         return v
 
 

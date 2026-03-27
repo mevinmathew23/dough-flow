@@ -12,6 +12,10 @@ if [ -n "$BACKEND_CHANGED" ]; then
     echo "=== Backend Checks ==="
     BACKEND="$ROOT/dough_flow_api"
 
+    # Activate the venv so poetry uses the correct Python
+    # shellcheck disable=SC1091
+    source "$BACKEND/.venv/bin/activate"
+
     echo "[1/6] isort"
     (cd "$BACKEND" && poetry run isort --check-only api/ tests/)
 

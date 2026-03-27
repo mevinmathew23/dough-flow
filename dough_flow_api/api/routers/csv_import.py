@@ -93,7 +93,10 @@ async def preview_csv(
         mapping_result = await db.execute(select(CSVMapping).where(CSVMapping.id == uuid.UUID(mapping_id)))
         mapping_obj = mapping_result.scalar_one_or_none()
         if mapping_obj and mapping_obj.category_mapping:
-            institution_entries = mapping_obj.category_mapping.get("entries", [])
+            institution_entries = [
+                CategoryMappingEntryDict(source=e["source"], target=e["target"])
+                for e in mapping_obj.category_mapping.get("entries", [])
+            ]
 
     # Build list of category names for resolution
     cat_result = await db.execute(
