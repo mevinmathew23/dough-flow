@@ -39,11 +39,7 @@ async def create_account_with_debt(
             current_balance=abs(data.balance) if data.balance else 0,
             interest_rate=data.interest_rate or 0,
             minimum_payment=data.minimum_payment or 0,
-            compounding_frequency=(
-                CompoundingFrequency(data.compounding_frequency)
-                if data.compounding_frequency
-                else CompoundingFrequency.MONTHLY
-            ),
+            compounding_frequency=data.compounding_frequency or CompoundingFrequency.MONTHLY,
         )
         db.add(debt)
 

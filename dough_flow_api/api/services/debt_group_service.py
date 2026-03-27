@@ -17,13 +17,12 @@ async def create_group(db: AsyncSession, user_id: uuid.UUID, name: str) -> DebtG
         name: Display name for the group.
 
     Returns:
-        The newly created DebtGroup instance.
+        The newly created DebtGroup instance with debts eagerly loaded.
     """
     group = DebtGroup(user_id=user_id, name=name)
     db.add(group)
     await db.commit()
-    await db.refresh(group)
-    return group
+    return await get_group(db, user_id, group.id)
 
 
 async def list_groups(db: AsyncSession, user_id: uuid.UUID) -> list[DebtGroup]:

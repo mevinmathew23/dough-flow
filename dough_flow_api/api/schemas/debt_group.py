@@ -1,7 +1,8 @@
 import uuid
 from datetime import datetime
+from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class DebtGroupCreate(BaseModel):
@@ -17,6 +18,20 @@ class DebtGroupResponse(BaseModel):
     name: str
     debt_ids: list[uuid.UUID]
     created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode="before")
+    @classmethod
+    def extract_debt_ids(cls, data: Any) -> Any:
+        if hasattr(data, "debts"):
+            data = {
+                "id": data.id,
+                "name": data.name,
+                "debt_ids": [d.id for d in data.debts],
+                "created_at": data.created_at,
+            }
+        return data
 
 
 class DebtGroupMemberUpdate(BaseModel):

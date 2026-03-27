@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)) -> User:
     existing = await get_user_by_email(db, user_data.email)
     if existing:
-        raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
     user = await create_user(db, user_data.email, user_data.password, user_data.name)
     return user
 
@@ -25,7 +25,7 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)) ->
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)) -> Token:
     user = await authenticate_user(db, form_data.username, form_data.password)
     if user is None:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     token = create_access_token(data={"sub": user.email})
     return Token(access_token=token)
 

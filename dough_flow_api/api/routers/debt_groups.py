@@ -24,37 +24,21 @@ from api.services.debt_group_service import (
 router = APIRouter(prefix="/api/debt-groups", tags=["debt-groups"])
 
 
-def _to_response(group: DebtGroup) -> DebtGroupResponse:
-    return DebtGroupResponse(
-        id=group.id,
-        name=group.name,
-        debt_ids=[d.id for d in group.debts],
-        created_at=group.created_at,
-    )
-
-
 @router.post("", response_model=DebtGroupResponse, status_code=status.HTTP_201_CREATED)
 async def create_debt_group(
     data: DebtGroupCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> DebtGroupResponse:
-    group = await create_group(db, current_user.id, data.name)
-    return DebtGroupResponse(
-        id=group.id,
-        name=group.name,
-        debt_ids=[],
-        created_at=group.created_at,
-    )
+) -> DebtGroup:
+    return await create_group(db, current_user.id, data.name)
 
 
 @router.get("", response_model=list[DebtGroupResponse])
 async def list_debt_groups(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[DebtGroupResponse]:
-    groups = await list_groups(db, current_user.id)
-    return [_to_response(g) for g in groups]
+) -> list[DebtGroup]:
+    return await list_groups(db, current_user.id)
 
 
 @router.patch("/{group_id}", response_model=DebtGroupResponse)
@@ -63,12 +47,11 @@ async def update_debt_group(
     data: DebtGroupUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> DebtGroupResponse:
+) -> DebtGroup:
     try:
-        group = await update_group(db, current_user.id, group_id, data.name)
+        return await update_group(db, current_user.id, group_id, data.name)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
-    return _to_response(group)
 
 
 @router.delete("/{group_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -89,9 +72,8 @@ async def set_debt_group_members(
     data: DebtGroupMemberUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> DebtGroupResponse:
+) -> DebtGroup:
     try:
-        group = await set_group_debts(db, current_user.id, group_id, data.debt_ids)
+        return await set_group_debts(db, current_user.id, group_id, data.debt_ids)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
-    return _to_response(group)

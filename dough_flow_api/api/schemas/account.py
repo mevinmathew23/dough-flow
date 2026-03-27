@@ -4,6 +4,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 
 from api.models.account import AccountType
+from api.models.debt import CompoundingFrequency
 
 
 class AccountCreate(BaseModel):
@@ -13,7 +14,7 @@ class AccountCreate(BaseModel):
     balance: float = 0
     interest_rate: float | None = None
     minimum_payment: float | None = None
-    compounding_frequency: str | None = None
+    compounding_frequency: CompoundingFrequency | None = None
 
 
 class AccountUpdate(BaseModel):
