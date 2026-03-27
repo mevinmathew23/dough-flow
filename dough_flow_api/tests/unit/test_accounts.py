@@ -27,7 +27,7 @@ async def test_list_accounts(auth_client: AsyncClient):
     response = await auth_client.get("/api/accounts")
     assert response.status_code == 200
     data = response.json()
-    assert len(data) >= 1
+    assert len(data) == 1
 
 
 async def test_get_account(auth_client: AsyncClient):
@@ -160,3 +160,38 @@ async def test_create_credit_with_custom_debt_fields(auth_client: AsyncClient):
         assert debt is not None
         assert float(debt.minimum_payment) == 50
         assert debt.compounding_frequency.value == "daily"
+
+
+async def test_create_retirement_account(auth_client: AsyncClient):
+    response = await auth_client.post(
+        "/api/accounts",
+        json={"name": "My 401k", "type": "retirement", "institution": "Fidelity", "balance": 50000},
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["type"] == "retirement"
+    assert data["name"] == "My 401k"
+
+
+async def test_create_investment_account(auth_client: AsyncClient):
+    response = await auth_client.post(
+        "/api/accounts",
+        json={"name": "Brokerage", "type": "investment", "institution": "Vanguard", "balance": 10000},
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["type"] == "investment"
+
+
+async def test_retirement_account_does_not_create_debt(auth_client: AsyncClient):
+    response = await auth_client.post(
+        "/api/accounts",
+        json={"name": "Roth IRA", "type": "retirement", "institution": "Vanguard", "balance": 25000},
+    )
+    assert response.status_code == 201
+    account_id = response.json()["id"]
+
+    async with TestingSessionLocal() as session:
+        result = await session.execute(select(Debt).where(Debt.account_id == uuid.UUID(account_id)))
+        debt = result.scalar_one_or_none()
+        assert debt is None

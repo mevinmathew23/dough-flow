@@ -61,7 +61,7 @@ async def test_list_debts(auth_client: AsyncClient):
     )
     response = await auth_client.get("/api/debts")
     assert response.status_code == 200
-    assert len(response.json()) >= 1
+    assert len(response.json()) == 2
 
 
 async def test_update_debt(auth_client: AsyncClient):

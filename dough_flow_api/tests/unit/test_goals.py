@@ -20,7 +20,7 @@ async def test_list_goals(auth_client: AsyncClient):
     )
     response = await auth_client.get("/api/goals")
     assert response.status_code == 200
-    assert len(response.json()) >= 1
+    assert len(response.json()) == 1
 
 
 async def test_update_goal(auth_client: AsyncClient):
