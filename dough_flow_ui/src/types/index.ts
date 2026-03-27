@@ -150,12 +150,23 @@ export interface Goal {
   icon: string
 }
 
+export interface CategoryMappingEntry {
+  source: string
+  target: string
+}
+
+export interface InstitutionCategoryMapping {
+  entries: CategoryMappingEntry[]
+}
+
 export interface CSVMapping {
   id: string
-  user_id: string
+  user_id: string | null
   institution_name: string
   column_mapping: Record<string, string>
   date_format: string
+  category_mapping: InstitutionCategoryMapping | null
+  is_default: boolean
   created_at: string
 }
 
@@ -173,6 +184,9 @@ export interface CSVPreviewRow {
   description: string
   amount: number
   category_name: string | null
+  resolved_category_name: string | null
+  match_method: 'exact' | 'institution' | 'fuzzy' | 'unmatched' | null
+  confidence: number | null
   is_duplicate: boolean
   transfer_match: TransferCandidate | null
   link_transfer_id: string | null

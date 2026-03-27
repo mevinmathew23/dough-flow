@@ -313,6 +313,9 @@ export default function CsvImport() {
         formData.append('account_id', selectedAccountId)
       }
       formData.append('date_tolerance_days', String(dateTolerance))
+      if (selectedMapping) {
+        formData.append('mapping_id', selectedMapping.id)
+      }
       const res = await api.post<CSVPreviewResponse>('/csv/preview', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
@@ -348,6 +351,10 @@ export default function CsvImport() {
           ...row,
           category_name:
             overriddenCategory !== undefined ? overriddenCategory || null : row.category_name,
+          resolved_category_name:
+            overriddenCategory !== undefined
+              ? overriddenCategory || null
+              : row.resolved_category_name,
           link_transfer_id: shouldLink ? row.transfer_match!.transaction_id : null,
         }
       })
@@ -358,6 +365,7 @@ export default function CsvImport() {
         institution_name: saveMapping ? institutionName : null,
         column_mapping: columnMapping,
         date_format: dateFormat,
+        mapping_id: selectedMapping?.id ?? null,
       }
       const res = await api.post<{ imported: number; skipped: number }>('/csv/confirm', payload)
       setConfirmResult(res.data)
@@ -558,7 +566,7 @@ export default function CsvImport() {
         key={idx}
         className={`border-t border-navy-800 transition-opacity ${
           isDuplicate && !includeDuplicates ? 'opacity-30' : ''
-        }`}
+        } ${row.match_method === 'unmatched' && row.category_name ? 'bg-red-950/20' : ''}`}
       >
         <td
           className={`px-4 py-2 text-sm text-slate-300 ${isDuplicate ? 'line-through text-slate-500' : ''}`}
@@ -583,7 +591,7 @@ export default function CsvImport() {
         </td>
         <td className="px-4 py-2">
           <select
-            value={categoryOverrides[idx] ?? row.category_name ?? ''}
+            value={categoryOverrides[idx] ?? row.resolved_category_name ?? row.category_name ?? ''}
             onChange={(e) => setCategoryOverrides((prev) => ({ ...prev, [idx]: e.target.value }))}
             className="bg-navy-850 border border-navy-750 rounded px-2 py-1 text-sm text-slate-300 focus:outline-none focus:border-emerald-500 w-full"
           >
@@ -594,6 +602,28 @@ export default function CsvImport() {
               </option>
             ))}
           </select>
+          {row.match_method && !categoryOverrides[idx] && (
+            <span
+              className={`inline-block ml-1.5 mt-1 text-xs px-1.5 py-0.5 rounded ${
+                row.match_method === 'exact' || row.match_method === 'institution'
+                  ? 'bg-emerald-900/60 text-emerald-400'
+                  : row.match_method === 'fuzzy'
+                    ? 'bg-yellow-900/60 text-yellow-400'
+                    : 'bg-red-900/60 text-red-400'
+              }`}
+              title={
+                row.match_method === 'fuzzy' && row.confidence
+                  ? `Fuzzy match (${Math.round(row.confidence * 100)}%)`
+                  : row.match_method
+              }
+            >
+              {row.match_method === 'exact' || row.match_method === 'institution'
+                ? '✓'
+                : row.match_method === 'fuzzy'
+                  ? '~'
+                  : '?'}
+            </span>
+          )}
         </td>
         <td className="px-4 py-2">
           {isDuplicate && (

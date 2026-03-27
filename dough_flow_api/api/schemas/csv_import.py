@@ -1,7 +1,16 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
+
+
+class CategoryMappingEntry(BaseModel):
+    source: str
+    target: str
+
+
+class InstitutionCategoryMapping(BaseModel):
+    entries: list[CategoryMappingEntry]
 
 
 class CSVMappingCreate(BaseModel):
@@ -12,13 +21,24 @@ class CSVMappingCreate(BaseModel):
 
 class CSVMappingResponse(BaseModel):
     id: uuid.UUID
-    user_id: uuid.UUID
+    user_id: uuid.UUID | None
     institution_name: str
     column_mapping: dict[str, str]
     date_format: str
+    category_mapping: InstitutionCategoryMapping | None = None
+    is_default: bool = False
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("category_mapping", mode="before")
+    @classmethod
+    def parse_category_mapping(cls, v: dict | None) -> InstitutionCategoryMapping | None:
+        if v is None:
+            return None
+        if isinstance(v, dict):
+            return InstitutionCategoryMapping(**v)
+        return v
 
 
 class ParsedCSVRow(BaseModel):
@@ -48,6 +68,9 @@ class CSVPreviewRow(BaseModel):
     description: str
     amount: float
     category_name: str | None = None
+    resolved_category_name: str | None = None
+    match_method: str | None = None
+    confidence: float | None = None
     is_duplicate: bool = False
     transfer_match: TransferCandidate | None = None
     link_transfer_id: uuid.UUID | None = None
@@ -72,6 +95,7 @@ class CSVConfirmRequest(BaseModel):
     institution_name: str | None = None
     column_mapping: dict[str, str] | None = None
     date_format: str = "%m/%d/%Y"
+    mapping_id: uuid.UUID | None = None
 
 
 class CSVConfirmResponse(BaseModel):

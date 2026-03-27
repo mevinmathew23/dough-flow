@@ -19,6 +19,7 @@ from api.routers import (
     transactions,
 )
 from api.seed import seed_default_categories
+from api.seed_csv_mappings import seed_default_csv_mappings
 
 
 class HealthResponse(BaseModel):
@@ -29,6 +30,7 @@ class HealthResponse(BaseModel):
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     async with async_session() as db:
         await seed_default_categories(db)
+        await seed_default_csv_mappings(db)
     yield
 
 
