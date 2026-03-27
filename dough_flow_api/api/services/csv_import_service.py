@@ -126,9 +126,8 @@ async def process_import(
 ) -> CSVConfirmResponse:
     """Persist confirmed CSV rows as transactions and optionally save/update the mapping.
 
-    Raises HTTPException (403) if the account does not belong to the user. Skips
-    rows marked as duplicates. Handles transfer linking and auto-saves category
-    overrides back to the institution mapping when applicable.
+    Skips rows marked as duplicates. Handles transfer linking and auto-saves
+    category overrides back to the institution mapping when applicable.
 
     Args:
         db: Async database session.
@@ -136,7 +135,8 @@ async def process_import(
         account_id: Target account UUID. Must belong to user_id.
         rows: Preview rows from the client, with resolution decisions applied.
         mapping_id: Optional existing mapping to update with new category overrides.
-        save_mapping: When True and institution_name/column_mapping are provided, persist a new mapping.
+        save_mapping: When True and institution_name/column_mapping are provided,
+            persist a new mapping.
         institution_name: Institution name for saving a new mapping.
         column_mapping: Column mapping dict for saving a new mapping.
         date_format: Date format string for saving a new mapping.
@@ -249,7 +249,12 @@ async def _apply_category_overrides(
             and row.category_name.lower() != row.resolved_category_name.lower()
             and row.match_method in ("fuzzy", "unmatched")
         ):
-            overrides.append(CategoryMappingEntryDict(source=row.category_name, target=row.resolved_category_name))
+            overrides.append(
+                CategoryMappingEntryDict(
+                    source=row.category_name,
+                    target=row.resolved_category_name,
+                )
+            )
 
     # Deduplicate overrides (last wins per source)
     seen: dict[str, CategoryMappingEntryDict] = {}

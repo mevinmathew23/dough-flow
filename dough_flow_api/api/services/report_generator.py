@@ -190,7 +190,10 @@ async def get_income_vs_expense_trend(
             func.coalesce(
                 func.sum(
                     case(
-                        (Transaction.type == TransactionType.EXPENSE, func.abs(Transaction.amount)),
+                        (
+                            Transaction.type == TransactionType.EXPENSE,
+                            func.abs(Transaction.amount),
+                        ),
                         else_=0,
                     )
                 ),
@@ -199,7 +202,10 @@ async def get_income_vs_expense_trend(
             func.coalesce(
                 func.sum(
                     case(
-                        (Transaction.type == TransactionType.PAYMENT, func.abs(Transaction.amount)),
+                        (
+                            Transaction.type == TransactionType.PAYMENT,
+                            func.abs(Transaction.amount),
+                        ),
                         else_=0,
                     )
                 ),
@@ -211,7 +217,13 @@ async def get_income_vs_expense_trend(
                 Transaction.user_id == user_id,
                 Transaction.date >= start_month,
                 Transaction.date < end_date,
-                Transaction.type.in_([TransactionType.INCOME, TransactionType.EXPENSE, TransactionType.PAYMENT]),
+                Transaction.type.in_(
+                    [
+                        TransactionType.INCOME,
+                        TransactionType.EXPENSE,
+                        TransactionType.PAYMENT,
+                    ]
+                ),
             )
         )
         .group_by(month_label)
