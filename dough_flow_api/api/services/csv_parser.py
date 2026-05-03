@@ -60,12 +60,17 @@ def parse_csv(
         if "category" in column_mapping and column_mapping["category"] in df.columns:
             category_name = str(row[column_mapping["category"]]).strip()
 
+        raw_type: str | None = None
+        if "type" in column_mapping and column_mapping["type"] in df.columns:
+            raw_type = str(row[column_mapping["type"]]).strip() or None
+
         rows.append(
             ParsedCSVRow(
                 date=parsed_date.isoformat(),
                 description=description,
                 amount=amount,
                 category_name=category_name,
+                raw_type=raw_type,
             )
         )
 
