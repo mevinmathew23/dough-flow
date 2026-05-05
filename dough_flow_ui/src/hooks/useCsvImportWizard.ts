@@ -14,6 +14,7 @@ const SEMANTIC_FIELDS: { key: string; label: string; required: boolean }[] = [
   { key: 'description', label: 'Description', required: true },
   { key: 'amount', label: 'Amount', required: true },
   { key: 'category', label: 'Category', required: false },
+  { key: 'type', label: 'Type', required: false },
 ]
 
 export { DATE_FORMAT_OPTIONS, SEMANTIC_FIELDS }
@@ -29,7 +30,8 @@ function autoMapColumns(columns: string[]): Record<string, string> {
     date: ['date', 'trans date', 'transaction date', 'posted date', 'post date'],
     description: ['description', 'desc', 'memo', 'payee', 'merchant', 'details', 'narrative'],
     amount: ['amount', 'debit', 'credit', 'transaction amount', 'sum'],
-    category: ['category', 'cat', 'type', 'label'],
+    category: ['category', 'cat', 'label'],
+    type: ['type', 'transaction type', 'trans type'],
   }
 
   for (const [field, keywords] of Object.entries(matchers)) {
@@ -91,6 +93,8 @@ export interface UseCsvImportWizardReturn {
   setTransferLinks: (fn: (prev: Record<number, boolean>) => Record<number, boolean>) => void
   categoryOverrides: Record<number, string>
   setCategoryOverrides: (fn: (prev: Record<number, string>) => Record<number, string>) => void
+  typeOverrides: Record<number, string>
+  setTypeOverrides: (fn: (prev: Record<number, string>) => Record<number, string>) => void
   rowsToImport: CSVPreviewResponse['rows']
   runPreview: (mapping: Record<string, string>, format: string) => Promise<void>
   handleConfirm: () => Promise<void>
@@ -130,6 +134,7 @@ export default function useCsvImportWizard(): UseCsvImportWizardReturn {
   const [dateTolerance, setDateTolerance] = useState(5)
   const [transferLinks, setTransferLinks] = useState<Record<number, boolean>>({})
   const [categoryOverrides, setCategoryOverrides] = useState<Record<number, string>>({})
+  const [typeOverrides, setTypeOverrides] = useState<Record<number, string>>({})
 
   // Step 4
   const [confirmResult, setConfirmResult] = useState<{
@@ -293,10 +298,44 @@ export default function useCsvImportWizard(): UseCsvImportWizardReturn {
       })
       setPreviewData(res.data)
       const links: Record<number, boolean> = {}
+      const types: Record<number, string> = {}
+      const account = accounts.find((a) => a.id === selectedAccountId)
+      const isDebt = account?.type === 'credit' || account?.type === 'loan'
+      const pme = res.data.positive_means_expense
+      const rawTypeMap: Record<string, string> = {
+        sale: 'expense',
+        return: 'adjustment',
+        payment: 'payment',
+        credit: 'adjustment',
+        debit: 'expense',
+        purchase: 'expense',
+        'card purchase': 'expense',
+        adjustment: 'adjustment',
+      }
       res.data.rows.forEach((row, i) => {
-        if (row.transfer_match) links[i] = true
+        if (row.transfer_match) {
+          links[i] = true
+        } else if (row.raw_type && rawTypeMap[row.raw_type.toLowerCase()]) {
+          types[i] = rawTypeMap[row.raw_type.toLowerCase()]
+        } else {
+          const desc = row.description.toLowerCase()
+          types[i] = isDebt
+            ? desc.includes('payment')
+              ? 'payment'
+              : pme
+                ? row.amount > 0
+                  ? 'expense'
+                  : 'adjustment'
+                : row.amount > 0
+                  ? 'adjustment'
+                  : 'expense'
+            : row.amount >= 0
+              ? 'income'
+              : 'expense'
+        }
       })
       setTransferLinks(links)
+      setTypeOverrides(types)
       setStep(3)
     } catch {
       setError('Failed to generate preview. Check your column mapping and date format.')
@@ -327,6 +366,7 @@ export default function useCsvImportWizard(): UseCsvImportWizardReturn {
               ? overriddenCategory || null
               : row.resolved_category_name,
           link_transfer_id: shouldLink ? row.transfer_match!.transaction_id : null,
+          type_override: shouldLink ? null : (typeOverrides[originalIdx] ?? null),
         }
       })
       const payload = {
@@ -337,6 +377,7 @@ export default function useCsvImportWizard(): UseCsvImportWizardReturn {
         column_mapping: columnMapping,
         date_format: dateFormat,
         mapping_id: selectedMapping?.id ?? null,
+        positive_means_expense: previewData?.positive_means_expense ?? false,
       }
       const res = await api.post<{ imported_count: number; skipped_duplicates: number }>(
         '/csv/confirm',
@@ -370,6 +411,7 @@ export default function useCsvImportWizard(): UseCsvImportWizardReturn {
     setConfirmResult(null)
     setTransferLinks({})
     setCategoryOverrides({})
+    setTypeOverrides({})
     setDateTolerance(5)
     setError('')
     if (fileInputRef.current) {
@@ -415,6 +457,8 @@ export default function useCsvImportWizard(): UseCsvImportWizardReturn {
     setTransferLinks,
     categoryOverrides,
     setCategoryOverrides,
+    typeOverrides,
+    setTypeOverrides,
     rowsToImport,
     runPreview,
     handleConfirm,
