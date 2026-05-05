@@ -69,6 +69,8 @@ export default function CsvImport() {
             setTransferLinks={wizard.setTransferLinks}
             categoryOverrides={wizard.categoryOverrides}
             setCategoryOverrides={wizard.setCategoryOverrides}
+            typeOverrides={wizard.typeOverrides}
+            setTypeOverrides={wizard.setTypeOverrides}
             rowsToImport={wizard.rowsToImport}
             loading={wizard.loading}
             error={wizard.error}

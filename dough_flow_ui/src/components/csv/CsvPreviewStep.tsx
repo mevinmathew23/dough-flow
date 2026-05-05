@@ -19,6 +19,8 @@ interface CsvPreviewStepProps {
   setTransferLinks: (fn: (prev: Record<number, boolean>) => Record<number, boolean>) => void
   categoryOverrides: Record<number, string>
   setCategoryOverrides: (fn: (prev: Record<number, string>) => Record<number, string>) => void
+  typeOverrides: Record<number, string>
+  setTypeOverrides: (fn: (prev: Record<number, string>) => Record<number, string>) => void
   rowsToImport: CSVPreviewResponse['rows']
   loading: boolean
   error: string
@@ -30,6 +32,13 @@ interface CsvPreviewStepProps {
   setStep: (step: import('../../hooks/useCsvImportWizard').WizardStep) => void
 }
 
+const TYPE_OPTIONS = [
+  { value: 'income', label: 'Income' },
+  { value: 'expense', label: 'Expense' },
+  { value: 'payment', label: 'Payment' },
+  { value: 'adjustment', label: 'Adjustment' },
+]
+
 function PreviewRow({
   row,
   idx,
@@ -39,6 +48,8 @@ function PreviewRow({
   setTransferLinks,
   categoryOverrides,
   setCategoryOverrides,
+  typeOverrides,
+  setTypeOverrides,
   formatCurrency,
 }: {
   row: CSVPreviewRow
@@ -49,6 +60,8 @@ function PreviewRow({
   setTransferLinks: (fn: (prev: Record<number, boolean>) => Record<number, boolean>) => void
   categoryOverrides: Record<number, string>
   setCategoryOverrides: (fn: (prev: Record<number, string>) => Record<number, string>) => void
+  typeOverrides: Record<number, string>
+  setTypeOverrides: (fn: (prev: Record<number, string>) => Record<number, string>) => void
   formatCurrency: (amount: number) => string
 }) {
   const isDuplicate = row.is_duplicate
@@ -100,22 +113,35 @@ function PreviewRow({
             className={`inline-block ml-1.5 mt-1 text-xs px-1.5 py-0.5 rounded ${
               row.match_method === 'exact' || row.match_method === 'institution'
                 ? 'bg-emerald-900/60 text-emerald-400'
-                : row.match_method === 'fuzzy'
-                  ? 'bg-yellow-900/60 text-yellow-400'
+                : row.match_method === 'llm'
+                  ? 'bg-violet-900/60 text-violet-400'
                   : 'bg-red-900/60 text-red-400'
             }`}
-            title={
-              row.match_method === 'fuzzy' && row.confidence
-                ? `Fuzzy match (${Math.round(row.confidence * 100)}%)`
-                : (row.match_method ?? undefined)
-            }
+            title={row.match_method === 'llm' ? 'AI classified' : (row.match_method ?? undefined)}
           >
             {row.match_method === 'exact' || row.match_method === 'institution'
               ? '✓'
-              : row.match_method === 'fuzzy'
-                ? '~'
+              : row.match_method === 'llm'
+                ? 'AI'
                 : '?'}
           </span>
+        )}
+      </td>
+      <td className="px-4 py-2">
+        {isLinked ? (
+          <span className="text-xs text-blue-400">Transfer</span>
+        ) : isDuplicate ? null : (
+          <select
+            value={typeOverrides[idx] ?? (row.amount >= 0 ? 'income' : 'expense')}
+            onChange={(e) => setTypeOverrides((prev) => ({ ...prev, [idx]: e.target.value }))}
+            className="bg-navy-850 border border-navy-750 rounded px-2 py-1 text-sm text-slate-300 focus:outline-none focus:border-emerald-500"
+          >
+            {TYPE_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
         )}
       </td>
       <td className="px-4 py-2">
@@ -159,6 +185,8 @@ export default function CsvPreviewStep({
   setTransferLinks,
   categoryOverrides,
   setCategoryOverrides,
+  typeOverrides,
+  setTypeOverrides,
   rowsToImport,
   loading,
   error,
@@ -247,6 +275,9 @@ export default function CsvPreviewStep({
                     Category
                   </th>
                   <th className="px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                    Type
+                  </th>
+                  <th className="px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">
                     Status
                   </th>
                 </tr>
@@ -263,6 +294,8 @@ export default function CsvPreviewStep({
                     setTransferLinks={setTransferLinks}
                     categoryOverrides={categoryOverrides}
                     setCategoryOverrides={setCategoryOverrides}
+                    typeOverrides={typeOverrides}
+                    setTypeOverrides={setTypeOverrides}
                     formatCurrency={formatCurrency}
                   />
                 ))}

@@ -8,6 +8,7 @@ class InstitutionMappingDict(TypedDict):
     column_mapping: dict[str, str]
     date_format: str
     category_mapping: NotRequired[CategoryMappingDict | None]
+    positive_means_expense: NotRequired[bool]
 
 
 INSTITUTION_MAPPINGS: list[InstitutionMappingDict] = [
@@ -18,6 +19,7 @@ INSTITUTION_MAPPINGS: list[InstitutionMappingDict] = [
             "description": "Description",
             "amount": "Amount",
             "category": "Category",
+            "type": "Type",
         },
         "date_format": "%m/%d/%Y",
         "category_mapping": {
@@ -78,6 +80,7 @@ INSTITUTION_MAPPINGS: list[InstitutionMappingDict] = [
             "category": "Category",
         },
         "date_format": "%m/%d/%Y",
+        "positive_means_expense": True,
         "category_mapping": {
             "entries": [
                 {"source": "Merchandise & Supplies-Groceries", "target": "Food & Groceries"},
@@ -115,6 +118,7 @@ INSTITUTION_MAPPINGS: list[InstitutionMappingDict] = [
             "category": "Category",
         },
         "date_format": "%Y-%m-%d",
+        "positive_means_expense": True,
         "category_mapping": {
             "entries": [
                 {"source": "Dining", "target": "Dining Out"},
@@ -150,6 +154,7 @@ INSTITUTION_MAPPINGS: list[InstitutionMappingDict] = [
             "amount": "Debit",
         },
         "date_format": "%m/%d/%Y",
+        "positive_means_expense": True,
         "category_mapping": None,
     },
     {
@@ -161,6 +166,7 @@ INSTITUTION_MAPPINGS: list[InstitutionMappingDict] = [
             "category": "Category",
         },
         "date_format": "%m/%d/%Y",
+        "positive_means_expense": True,
         "category_mapping": {
             "entries": [
                 {"source": "Restaurants", "target": "Dining Out"},
@@ -181,8 +187,10 @@ INSTITUTION_MAPPINGS: list[InstitutionMappingDict] = [
             "description": "Description",
             "amount": "Amount (USD)",
             "category": "Category",
+            "type": "Type",
         },
         "date_format": "%m/%d/%Y",
+        "positive_means_expense": True,
         "category_mapping": {
             "entries": [
                 {"source": "Food & Drink", "target": "Dining Out"},

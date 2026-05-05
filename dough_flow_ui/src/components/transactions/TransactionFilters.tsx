@@ -39,18 +39,19 @@ export default function TransactionFilters({
   clearFilters,
 }: TransactionFiltersProps) {
   return (
-    <div className="flex flex-wrap items-center gap-3 mb-4">
+    <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 mb-6 flex flex-wrap items-center gap-3">
+      <span className="text-slate-400 text-sm font-medium">Filters</span>
       <input
         type="text"
         placeholder="Search description..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        className={`${selectClass} w-48`}
+        className={`${selectClass} !w-48`}
       />
       <select
         value={filterAccount}
         onChange={(e) => setFilterAccount(e.target.value)}
-        className={selectClass}
+        className={`${selectClass} !w-40`}
       >
         <option value="">All Accounts</option>
         {accounts.map((a) => (
@@ -62,7 +63,7 @@ export default function TransactionFilters({
       <select
         value={filterCategory}
         onChange={(e) => setFilterCategory(e.target.value)}
-        className={selectClass}
+        className={`${selectClass} !w-40`}
       >
         <option value="">All Categories</option>
         {categories.map((c) => (
@@ -74,7 +75,7 @@ export default function TransactionFilters({
       <select
         value={filterType}
         onChange={(e) => setFilterType(e.target.value)}
-        className={selectClass}
+        className={`${selectClass} !w-40`}
       >
         <option value="">All Types</option>
         <option value="income">Income</option>
@@ -87,14 +88,14 @@ export default function TransactionFilters({
         type="date"
         value={filterStartDate}
         onChange={(e) => setFilterStartDate(e.target.value)}
-        className={selectClass}
+        className={`${selectClass} !w-36`}
         placeholder="From"
       />
       <input
         type="date"
         value={filterEndDate}
         onChange={(e) => setFilterEndDate(e.target.value)}
-        className={selectClass}
+        className={`${selectClass} !w-36`}
         placeholder="To"
       />
       {hasActiveFilters && (

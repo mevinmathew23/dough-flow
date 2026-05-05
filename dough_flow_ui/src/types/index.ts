@@ -167,6 +167,7 @@ export interface CSVMapping {
   date_format: string
   category_mapping: InstitutionCategoryMapping | null
   is_default: boolean
+  positive_means_expense: boolean
   created_at: string
 }
 
@@ -185,11 +186,13 @@ export interface CSVPreviewRow {
   amount: number
   category_name: string | null
   resolved_category_name: string | null
-  match_method: 'exact' | 'institution' | 'fuzzy' | 'unmatched' | null
+  match_method: 'exact' | 'institution' | 'unmatched' | 'llm' | null
   confidence: number | null
   is_duplicate: boolean
   transfer_match: TransferCandidate | null
   link_transfer_id: string | null
+  type_override: TransactionType | null
+  raw_type: string | null
 }
 
 export interface CSVPreviewResponse {
@@ -198,6 +201,7 @@ export interface CSVPreviewResponse {
   total_rows: number
   duplicate_count: number
   transfer_match_count: number
+  positive_means_expense: boolean
 }
 
 export interface MonthlySummary {

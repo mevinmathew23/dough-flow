@@ -24,6 +24,7 @@ class CSVMapping(Base):
     date_format: Mapped[str] = mapped_column(String(50), default="%m/%d/%Y")
     category_mapping: Mapped[CategoryMappingDict | None] = mapped_column(JSON, nullable=True, default=None)
     is_default: Mapped[bool] = mapped_column(Boolean, default=False)
+    positive_means_expense: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     user: Mapped[User | None] = relationship(back_populates="csv_mappings")

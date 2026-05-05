@@ -1,5 +1,7 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { createAccount, deleteAccount, fetchAccounts, updateAccount } from '../api/accounts'
+import { fetchDebts } from '../api/debts'
 import ConfirmDialog from '../components/ConfirmDialog'
 import EmptyState from '../components/EmptyState'
 import ErrorAlert from '../components/ErrorAlert'
@@ -37,7 +39,9 @@ function formatInterestDisplay(rate: number): string {
 export default function Accounts() {
   const { formatCurrency } = useCurrency()
   const { data: accounts, loading, error: fetchError, refetch } = useFetch(fetchAccounts)
+  const { data: debts } = useFetch(fetchDebts)
   const accountList = accounts ?? []
+  const accountsWithDebt = new Set((debts ?? []).map((d) => d.account_id))
 
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Account | null>(null)
@@ -191,6 +195,14 @@ export default function Accounts() {
                       </span>
                     </div>
                     <div className="flex items-center gap-4">
+                      {isDebtType(account.type) && !accountsWithDebt.has(account.id) && (
+                        <Link
+                          to="/debt"
+                          className="text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full hover:bg-amber-500/20 transition-colors"
+                        >
+                          No debt linked — Add one
+                        </Link>
+                      )}
                       <span
                         className={`text-sm font-medium font-mono ${account.balance >= 0 ? 'text-green-400' : 'text-red-400'}`}
                       >

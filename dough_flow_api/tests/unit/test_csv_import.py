@@ -1,4 +1,5 @@
 import io
+from unittest.mock import AsyncMock, patch
 
 from httpx import AsyncClient
 
@@ -164,14 +165,18 @@ async def test_csv_preview_resolves_categories(auth_client: AsyncClient):
         ]
     )
 
-    response = await auth_client.post(
-        "/api/csv/preview",
-        data={
-            "column_mapping": '{"date": "Date", "description": "Description", "amount": "Amount", "category": "Category"}',
-            "date_format": "%m/%d/%Y",
-        },
-        files={"file": ("transactions.csv", io.BytesIO(csv_data), "text/csv")},
-    )
+    with patch(
+        "api.services.csv_import_service.llm_classify_categories",
+        new=AsyncMock(return_value=[None]),
+    ):
+        response = await auth_client.post(
+            "/api/csv/preview",
+            data={
+                "column_mapping": '{"date": "Date", "description": "Description", "amount": "Amount", "category": "Category"}',
+                "date_format": "%m/%d/%Y",
+            },
+            files={"file": ("transactions.csv", io.BytesIO(csv_data), "text/csv")},
+        )
     assert response.status_code == 200
     data = response.json()
 
@@ -180,7 +185,7 @@ async def test_csv_preview_resolves_categories(auth_client: AsyncClient):
     assert data["rows"][0]["match_method"] == "exact"
     assert data["rows"][0]["confidence"] == 1.0
 
-    # Nonsense category -> unmatched
+    # Nonsense category -> unmatched (LLM mocked to return None)
     assert data["rows"][1]["match_method"] == "unmatched"
     assert data["rows"][1]["resolved_category_name"] is None
 
