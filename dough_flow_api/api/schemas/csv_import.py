@@ -89,7 +89,7 @@ class CSVPreviewRow(BaseModel):
     amount: float
     category_name: str | None = None
     resolved_category_name: str | None = None
-    match_method: Literal["exact", "institution", "fuzzy", "unmatched"] | None = None
+    match_method: Literal["exact", "institution", "unmatched", "llm"] | None = None
     confidence: float | None = None
     is_duplicate: bool = False
     transfer_match: TransferCandidate | None = None

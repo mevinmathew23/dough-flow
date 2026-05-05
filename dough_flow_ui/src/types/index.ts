@@ -186,7 +186,7 @@ export interface CSVPreviewRow {
   amount: number
   category_name: string | null
   resolved_category_name: string | null
-  match_method: 'exact' | 'institution' | 'fuzzy' | 'unmatched' | null
+  match_method: 'exact' | 'institution' | 'unmatched' | 'llm' | null
   confidence: number | null
   is_duplicate: boolean
   transfer_match: TransferCandidate | null

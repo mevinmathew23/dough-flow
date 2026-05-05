@@ -27,21 +27,13 @@ def test_institution_mapping_case_insensitive():
     assert result == CategoryMatch(resolved_name="Healthcare", method="institution", confidence=1.0)
 
 
-def test_fuzzy_match_above_threshold():
+def test_no_match_returns_unmatched():
     categories = ["Food & Groceries", "Healthcare", "Transportation"]
     result = resolve_category("Groceries", categories, institution_entries=[])
-    assert result.method == "fuzzy"
-    assert result.resolved_name == "Food & Groceries"
-    assert result.confidence >= 0.70
-
-
-def test_fuzzy_match_below_threshold_returns_unmatched():
-    categories = ["Food & Groceries", "Healthcare", "Transportation"]
-    result = resolve_category("xyzabc123", categories, institution_entries=[])
     assert result == CategoryMatch(resolved_name=None, method="unmatched", confidence=None)
 
 
-def test_institution_mapping_takes_priority_over_fuzzy():
+def test_institution_mapping_takes_priority_over_unmatched():
     categories = ["Dining Out", "Food & Groceries"]
     entries = [{"source": "Restaurant", "target": "Dining Out"}]
     result = resolve_category("Restaurant", categories, institution_entries=entries)
@@ -60,8 +52,8 @@ def test_none_category_name_returns_unmatched():
     assert result == CategoryMatch(resolved_name=None, method="unmatched", confidence=None)
 
 
-def test_institution_target_not_in_categories_skipped():
+def test_institution_target_not_in_categories_returns_unmatched():
     categories = ["Healthcare"]
     entries = [{"source": "Food & Drink", "target": "Nonexistent Category"}]
     result = resolve_category("Food & Drink", categories, institution_entries=entries)
-    assert result.method in ("fuzzy", "unmatched")
+    assert result.method == "unmatched"

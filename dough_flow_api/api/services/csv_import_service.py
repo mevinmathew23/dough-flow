@@ -18,6 +18,7 @@ from api.schemas.csv_import import (
     ExistingTransaction,
     TransferCandidate,
 )
+from api.services.category_llm import llm_classify_categories
 from api.services.category_resolver import resolve_category
 from api.services.csv_parser import find_duplicates
 from api.services.transfer_matcher import find_transfer_matches
@@ -118,6 +119,16 @@ async def build_preview_response(
                 raw_type=row.raw_type,
             )
         )
+
+    unmatched_indices = [i for i, r in enumerate(rows) if r.match_method == "unmatched"]
+    if unmatched_indices:
+        llm_results = await llm_classify_categories(
+            descriptions=[rows[i].description for i in unmatched_indices],
+            category_names=category_names,
+        )
+        for idx, category in zip(unmatched_indices, llm_results):
+            if category:
+                rows[idx] = rows[idx].model_copy(update={"resolved_category_name": category, "match_method": "llm"})
 
     return CSVPreviewResponse(
         columns=list(column_mapping.values()),
@@ -280,7 +291,7 @@ async def _apply_category_overrides(
             row.category_name
             and row.resolved_category_name
             and row.category_name.lower() != row.resolved_category_name.lower()
-            and row.match_method in ("fuzzy", "unmatched")
+            and row.match_method in ("llm", "unmatched")
         ):
             overrides.append(
                 CategoryMappingEntryDict(

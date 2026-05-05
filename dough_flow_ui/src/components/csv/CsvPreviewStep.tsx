@@ -113,21 +113,13 @@ function PreviewRow({
             className={`inline-block ml-1.5 mt-1 text-xs px-1.5 py-0.5 rounded ${
               row.match_method === 'exact' || row.match_method === 'institution'
                 ? 'bg-emerald-900/60 text-emerald-400'
-                : row.match_method === 'fuzzy'
-                  ? 'bg-yellow-900/60 text-yellow-400'
+                : row.match_method === 'llm'
+                  ? 'bg-violet-900/60 text-violet-400'
                   : 'bg-red-900/60 text-red-400'
             }`}
-            title={
-              row.match_method === 'fuzzy' && row.confidence
-                ? `Fuzzy match (${Math.round(row.confidence * 100)}%)`
-                : (row.match_method ?? undefined)
-            }
+            title={row.match_method === 'llm' ? 'AI classified' : (row.match_method ?? undefined)}
           >
-            {row.match_method === 'exact' || row.match_method === 'institution'
-              ? '✓'
-              : row.match_method === 'fuzzy'
-                ? '~'
-                : '?'}
+            {row.match_method === 'exact' || row.match_method === 'institution' ? '✓' : row.match_method === 'llm' ? 'AI' : '?'}
           </span>
         )}
       </td>
