@@ -160,3 +160,11 @@ Defined in `.env` at project root. Key vars: `DATABASE_URL`, `SECRET_KEY`, `ALGO
 - Test files mirror router files: `routers/accounts.py` → `tests/unit/test_accounts.py`
 - Assert both status codes and response body structure
 - Each test function is independent — `setup_db` fixture recreates tables per test
+
+## Model Selection
+
+Use the appropriate model based on task complexity:
+
+- **Haiku** (`claude-haiku-4-5-20251001`) — lightweight and exploratory tasks: reading files, searching code, answering questions, quick lookups
+- **Sonnet** (`claude-sonnet-4-6`) — medium tasks: writing or editing individual files, fixing bugs, reviewing code
+- **Opus** (`claude-opus-4-7`) — complex implementation tasks: multi-file features, architectural changes, executing plans

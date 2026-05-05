@@ -172,12 +172,13 @@ async def get_income_vs_expense_trend(
 
     end_date = first_of_next_month(date(today.year, today.month, 1))
 
-    # SQLite-compatible month truncation; production PostgreSQL also supports strftime
-    month_label = func.strftime("%Y-%m-01", Transaction.date)
+    year_col = func.extract("year", Transaction.date).label("year")
+    month_col = func.extract("month", Transaction.date).label("month")
 
     result = await db.execute(
         select(
-            month_label.label("month_str"),
+            year_col,
+            month_col,
             func.coalesce(
                 func.sum(
                     case(
@@ -226,12 +227,13 @@ async def get_income_vs_expense_trend(
                 ),
             )
         )
-        .group_by(month_label)
-        .order_by(month_label)
+        .group_by(year_col, month_col)
+        .order_by(year_col, month_col)
     )
-    rows_by_month: dict[str, tuple[float, float, float]] = {
-        row.month_str: (float(row.income), float(row.expenses), float(row.payments)) for row in result.all()
-    }
+    rows_by_month: dict[str, tuple[float, float, float]] = {}
+    for row in result.all():
+        key = f"{int(row.year):04d}-{int(row.month):02d}-01"
+        rows_by_month[key] = (float(row.income), float(row.expenses), float(row.payments))
 
     # Build full month list, filling in zeros for months with no transactions
     trend: list[MonthlySummary] = []
