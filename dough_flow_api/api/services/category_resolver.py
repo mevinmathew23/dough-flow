@@ -48,6 +48,8 @@ def resolve_category(
     # 2. Institution mapping
     for entry in institution_entries:
         if entry["source"].lower() == name_lower and entry["target"].lower() in cat_lookup:
-            return CategoryMatch(resolved_name=cat_lookup[entry["target"].lower()], method="institution", confidence=1.0)
+            return CategoryMatch(
+                resolved_name=cat_lookup[entry["target"].lower()], method="institution", confidence=1.0
+            )
 
     return CategoryMatch(resolved_name=None, method="unmatched", confidence=None)

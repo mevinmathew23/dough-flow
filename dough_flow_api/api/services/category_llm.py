@@ -63,7 +63,7 @@ async def llm_classify_categories(
         )
         content = response.choices[0].message.content or ""
         data = json.loads(content)
-        raw: list = data.get("classifications", [])
+        raw: list[object] = data.get("classifications", [])
 
         result: list[str | None] = []
         for item in raw:

@@ -119,7 +119,11 @@ function PreviewRow({
             }`}
             title={row.match_method === 'llm' ? 'AI classified' : (row.match_method ?? undefined)}
           >
-            {row.match_method === 'exact' || row.match_method === 'institution' ? '✓' : row.match_method === 'llm' ? 'AI' : '?'}
+            {row.match_method === 'exact' || row.match_method === 'institution'
+              ? '✓'
+              : row.match_method === 'llm'
+                ? 'AI'
+                : '?'}
           </span>
         )}
       </td>
