@@ -31,6 +31,7 @@ class CSVMappingCreate(BaseModel):
     institution_name: str
     column_mapping: dict[str, str]
     date_format: str = "%m/%d/%Y"
+    positive_means_expense: bool = False
 
 
 class CSVMappingResponse(BaseModel):
@@ -41,6 +42,7 @@ class CSVMappingResponse(BaseModel):
     date_format: str
     category_mapping: InstitutionCategoryMapping | None = None
     is_default: bool = False
+    positive_means_expense: bool = False
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -63,6 +65,7 @@ class ParsedCSVRow(BaseModel):
     description: str
     amount: float
     category_name: str | None = None
+    raw_type: str | None = None
 
 
 class ExistingTransaction(BaseModel):
@@ -91,6 +94,8 @@ class CSVPreviewRow(BaseModel):
     is_duplicate: bool = False
     transfer_match: TransferCandidate | None = None
     link_transfer_id: uuid.UUID | None = None
+    type_override: str | None = None
+    raw_type: str | None = None
 
 
 class CSVPreviewResponse(BaseModel):
@@ -99,6 +104,7 @@ class CSVPreviewResponse(BaseModel):
     total_rows: int
     duplicate_count: int
     transfer_match_count: int = 0
+    positive_means_expense: bool = False
 
 
 class CSVColumnDetectionResponse(BaseModel):
@@ -113,6 +119,7 @@ class CSVConfirmRequest(BaseModel):
     column_mapping: dict[str, str] | None = None
     date_format: str = "%m/%d/%Y"
     mapping_id: uuid.UUID | None = None
+    positive_means_expense: bool = False
 
 
 class CSVConfirmResponse(BaseModel):

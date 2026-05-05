@@ -6,7 +6,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 
-from api.models.account import Account
+from api.models.account import Account, AccountType
 from api.models.category import Category
 from api.models.csv_mapping import CSVMapping
 from api.models.transaction import Transaction, TransactionSource, TransactionType
@@ -21,6 +21,17 @@ from api.schemas.csv_import import (
 from api.services.category_resolver import resolve_category
 from api.services.csv_parser import find_duplicates
 from api.services.transfer_matcher import find_transfer_matches
+
+_RAW_TYPE_MAP: dict[str, str] = {
+    "sale": "expense",
+    "return": "adjustment",
+    "payment": "payment",
+    "credit": "adjustment",
+    "debit": "expense",
+    "purchase": "expense",
+    "card purchase": "expense",
+    "adjustment": "adjustment",
+}
 
 
 async def build_preview_response(
@@ -74,15 +85,18 @@ async def build_preview_response(
             date_tolerance_days=date_tolerance_days,
         )
 
+    positive_means_expense: bool = False
     institution_entries: list[CategoryMappingEntryDict] = []
     if mapping_id:
         mapping_result = await db.execute(select(CSVMapping).where(CSVMapping.id == uuid.UUID(mapping_id)))
         mapping_obj = mapping_result.scalar_one_or_none()
-        if mapping_obj and mapping_obj.category_mapping:
-            institution_entries = [
-                CategoryMappingEntryDict(source=e["source"], target=e["target"])
-                for e in mapping_obj.category_mapping.get("entries", [])
-            ]
+        if mapping_obj:
+            positive_means_expense = mapping_obj.positive_means_expense
+            if mapping_obj.category_mapping:
+                institution_entries = [
+                    CategoryMappingEntryDict(source=e["source"], target=e["target"])
+                    for e in mapping_obj.category_mapping.get("entries", [])
+                ]
 
     cat_result = await db.execute(select(Category).where(or_(Category.user_id == user_id, Category.user_id.is_(None))))
     category_names = [c.name for c in cat_result.scalars().all()]
@@ -101,6 +115,7 @@ async def build_preview_response(
                 confidence=match.confidence,
                 is_duplicate=i in duplicate_indices,
                 transfer_match=transfer_matches.get(i),
+                raw_type=row.raw_type,
             )
         )
 
@@ -110,6 +125,7 @@ async def build_preview_response(
         total_rows=len(rows),
         duplicate_count=len(duplicate_indices),
         transfer_match_count=len(transfer_matches),
+        positive_means_expense=positive_means_expense,
     )
 
 
@@ -123,6 +139,7 @@ async def process_import(
     institution_name: str | None,
     column_mapping: dict[str, str] | None,
     date_format: str,
+    positive_means_expense: bool = False,
 ) -> CSVConfirmResponse:
     """Persist confirmed CSV rows as transactions and optionally save/update the mapping.
 
@@ -148,8 +165,10 @@ async def process_import(
         ValueError: If the account does not belong to the current user.
     """
     acct_result = await db.execute(select(Account).where(Account.id == account_id, Account.user_id == user_id))
-    if acct_result.scalar_one_or_none() is None:
+    acct = acct_result.scalar_one_or_none()
+    if acct is None:
         raise ValueError("Account not owned by user")
+    is_debt_account = acct.type in (AccountType.CREDIT, AccountType.LOAN)
 
     cat_result = await db.execute(select(Category).where(or_(Category.user_id == user_id, Category.user_id.is_(None))))
     category_by_name: dict[str, uuid.UUID] = {cat.name.lower(): cat.id for cat in cat_result.scalars().all()}
@@ -191,7 +210,20 @@ async def process_import(
                 existing_txn.type = TransactionType.TRANSFER
                 existing_txn.transfer_id = shared_transfer_id
         else:
-            txn_type = TransactionType.EXPENSE if row.amount < 0 else TransactionType.INCOME
+            if row.type_override:
+                txn_type = TransactionType(row.type_override)
+            elif row.raw_type and row.raw_type.lower().strip() in _RAW_TYPE_MAP:
+                txn_type = TransactionType(_RAW_TYPE_MAP[row.raw_type.lower().strip()])
+            elif is_debt_account:
+                desc = (row.description or "").lower()
+                if "payment" in desc:
+                    txn_type = TransactionType.PAYMENT
+                elif positive_means_expense:
+                    txn_type = TransactionType.EXPENSE if row.amount > 0 else TransactionType.ADJUSTMENT
+                else:
+                    txn_type = TransactionType.ADJUSTMENT if row.amount > 0 else TransactionType.EXPENSE
+            else:
+                txn_type = TransactionType.EXPENSE if row.amount < 0 else TransactionType.INCOME
             txn = Transaction(
                 account_id=account_id,
                 user_id=user_id,
@@ -214,6 +246,7 @@ async def process_import(
             institution_name=institution_name,
             column_mapping=column_mapping,
             date_format=date_format,
+            positive_means_expense=positive_means_expense,
         )
         db.add(new_mapping)
 

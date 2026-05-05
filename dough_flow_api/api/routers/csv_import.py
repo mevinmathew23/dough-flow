@@ -82,6 +82,7 @@ async def confirm_import(
             institution_name=data.institution_name,
             column_mapping=data.column_mapping,
             date_format=data.date_format,
+            positive_means_expense=data.positive_means_expense,
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e)) from e
